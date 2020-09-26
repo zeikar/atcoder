@@ -33,7 +33,16 @@
     <ClCompile Include="ABC_171_D.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
-    <ClCompile Include="ACLBC_A.cpp">
+    <ClCompile Include="ABL_A.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="ABL_B.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="ABL_C.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="ABL_D.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
   </ItemGroup>
