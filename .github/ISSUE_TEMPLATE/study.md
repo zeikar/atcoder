@@ -9,4 +9,6 @@ assignees: zeikar
 
 # Problem link
 
-# Brief explanation
+# Problem Summary
+
+# Solution
