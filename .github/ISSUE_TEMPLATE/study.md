@@ -1,7 +1,7 @@
 ---
 name: Study
 about: Solved problems for study
-title: "[Study]"
+title: ""
 labels: study
 assignees: zeikar
 

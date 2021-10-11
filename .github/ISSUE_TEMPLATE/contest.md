@@ -1,7 +1,7 @@
 ---
 name: Contest
 about: Solved problems during contest
-title: "[Contest]"
+title: ""
 labels: rated
 assignees: zeikar
 
@@ -9,6 +9,8 @@ assignees: zeikar
 
 # Contest Link
 
+
 # Solved problems
 
-# Brief explanation
+
+# Brief explanations
