@@ -12,7 +12,34 @@
 
 Generate Website/Github Pages with Github Issues.
 
+# Live Demo
+
+[https://zeikar.github.io/issueage/](https://zeikar.github.io/issueage/)
+
 # How to use
+
+## Create new Issueage based repository
+
+[Use this template](https://github.com/zeikar/issueage/generate)
+
+Create repository from this template.
+[docs](https://docs.github.com/en/repositories/creating-and-managing-repositories/creating-a-repository-from-a-template#creating-a-repository-from-a-template)
+
+```bash
+vi config.json
+```
+
+Configure your config.json and commit it.
+
+```bash
+git add config.json
+git commit -m "Apply Issueage"
+git push origin master
+```
+
+And set Source to gh-pages in Github Pages settings. [docs](https://docs.github.com/en/pages/getting-started-with-github-pages/configuring-a-publishing-source-for-your-github-pages-site)
+
+Then you can access your Github Pages!
 
 ## Add Issueage to existing repository
 
@@ -33,17 +60,7 @@ git commit -m "Apply Issueage"
 git push origin issueage
 ```
 
-Github Actions only works on the default branch (master/main). So you need to move Github Actions script to the default branch.
-
-```bash
-git switch <default-branch> --force
-git restore --source issueage -- .github/workflows/gh-pages.yml
-git add .github/workflows/gh-pages.yml
-git commit -m "Add issueage Github Actions script"
-git push origin <default-branch>
-```
-
-And set Source to gh-pages in Github Pages settings. (https://docs.github.com/en/pages/getting-started-with-github-pages/configuring-a-publishing-source-for-your-github-pages-site)
+And set Source to gh-pages in Github Pages settings. [docs](https://docs.github.com/en/pages/getting-started-with-github-pages/configuring-a-publishing-source-for-your-github-pages-site)
 
 Then you can access your Github Pages!
 
