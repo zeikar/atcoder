@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
+  assertBuildingConfiguredRepository,
   basePathFor,
+  fontStylesheetFor,
   parseSiteConfig,
   siteLocationFor,
 } from "../src/lib/config";
@@ -60,6 +62,33 @@ describe("parseSiteConfig", () => {
       parseSiteConfig(without("googleAnalyticsId")).googleAnalyticsId,
     ).toBe("");
   });
+});
+
+describe("assertBuildingConfiguredRepository", () => {
+  it("rejects a build running in another repository, such as a fresh copy of the template", () => {
+    expect(() =>
+      assertBuildingConfiguredRepository("zeikar", "repozine", "alice/blog"),
+    ).toThrow(/zeikar\/repozine.*alice\/blog/);
+  });
+
+  it("accepts the configured repository in any letter case", () => {
+    expect(() =>
+      assertBuildingConfiguredRepository(
+        "Zeikar",
+        "Repozine",
+        "zeikar/repozine",
+      ),
+    ).not.toThrow();
+  });
+
+  it.each([undefined, ""])(
+    "skips the check outside GitHub Actions (%j)",
+    (running) => {
+      expect(() =>
+        assertBuildingConfiguredRepository("zeikar", "repozine", running),
+      ).not.toThrow();
+    },
+  );
 });
 
 describe("siteLocationFor", () => {
@@ -122,4 +151,20 @@ describe("basePathFor", () => {
   it("serves another repository ending in .github.io under its own name", () => {
     expect(basePathFor("zeikar", "notes.github.io")).toBe("/notes.github.io");
   });
+});
+
+describe("fontStylesheetFor", () => {
+  it.each(["ko", "KO", "ko-KR"])(
+    "loads the Hangul faces for %j",
+    (language) => {
+      expect(fontStylesheetFor(language)).toBe("/src/styles/fonts-hangul.css");
+    },
+  );
+
+  it.each(["en", "ja", "kok"])(
+    "loads only the Latin faces for %j",
+    (language) => {
+      expect(fontStylesheetFor(language)).toBe("/src/styles/fonts-latin.css");
+    },
+  );
 });
