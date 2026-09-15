@@ -2,7 +2,8 @@
   "websiteTitle": "Atcoder Study",
   "repoOwner": "zeikar",
   "repoName": "atcoder",
-  "source": "issues",
+  "source": "discussions",
+  "discussionCategory": "posts",
   "googleAnalyticsId": "G-KB4FK3WS19",
   "language": "ko-KR"
 }
