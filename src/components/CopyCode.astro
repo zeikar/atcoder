@@ -1,0 +1,41 @@
+---
+// the script adds the buttons rather than the post's HTML, so a page without JavaScript shows no button that can't work
+---
+
+<script>
+  const LABEL_RESET_MS = 2000;
+
+  // rehypeWrapCodeBlocks puts each pre in this box
+  for (const block of document.querySelectorAll(".prose .code-block")) {
+    const pre = block.querySelector("pre");
+    if (!pre) {
+      continue;
+    }
+    const button = document.createElement("button");
+    button.type = "button";
+    button.textContent = "Copy";
+    // announces Copied or Copy failed
+    button.setAttribute("aria-live", "polite");
+    // shown while the block is hovered or the button has keyboard focus, and always on a touch screen, which can't hover
+    button.className =
+      "absolute top-2 right-2 rounded-md border border-rule bg-page px-2 py-0.5 font-sans text-xs text-muted opacity-0 select-none group-hover:opacity-100 hover:text-fg focus-visible:opacity-100 [@media(hover:none)]:opacity-100";
+    block.classList.add("group");
+
+    let reset: ReturnType<typeof setTimeout> | undefined;
+    button.addEventListener("click", async () => {
+      try {
+        await navigator.clipboard.writeText(pre.textContent ?? "");
+        button.textContent = "Copied";
+      } catch (error) {
+        // the clipboard is unavailable outside a secure context, or the browser denied it
+        console.error(error);
+        button.textContent = "Copy failed";
+      }
+      clearTimeout(reset);
+      reset = setTimeout(() => {
+        button.textContent = "Copy";
+      }, LABEL_RESET_MS);
+    });
+    block.append(button);
+  }
+</script>

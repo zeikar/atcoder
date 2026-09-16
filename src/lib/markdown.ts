@@ -1,5 +1,5 @@
 import rehypeShiki from "@shikijs/rehype";
-import type { Nodes, Root } from "hast";
+import type { Element, Nodes, Root } from "hast";
 import { toString } from "hast-util-to-string";
 import rehypeExternalLinks from "rehype-external-links";
 import rehypeRaw from "rehype-raw";
@@ -14,7 +14,7 @@ import remarkGfm from "remark-gfm";
 import remarkParse from "remark-parse";
 import remarkRehype from "remark-rehype";
 import { unified, type Plugin } from "unified";
-import { visit } from "unist-util-visit";
+import { EXIT, SKIP, visit } from "unist-util-visit";
 import { nestHeadings, type Heading, type TocItem } from "./toc";
 
 type PostMeta = {
@@ -156,6 +156,76 @@ const rehypeCollectPostMeta: Plugin<[], Root> = () => (tree, file) => {
   };
 };
 
+const rehypeLazyImages: Plugin<[], Root> = () => (tree) => {
+  visit(tree, "element", (node) => {
+    if (node.tagName === "img") {
+      node.properties.loading = "lazy";
+    }
+  });
+};
+
+const holdsLink = (node: Element): boolean => {
+  let found = false;
+  visit(node, "element", (child) => {
+    if (child.tagName === "a") {
+      found = true;
+      return EXIT;
+    }
+  });
+  return found;
+};
+
+// a heading's text links to the heading, so a section can be shared (global.css shows a "#" on hover); being the text
+// itself, the link adds nothing to the heading's accessible name. Skipped: an empty heading, the footnotes section's
+// visually hidden one, where a link would still take a Tab stop, one in or around a link, since links can't nest, and
+// one in a summary, where a click on a link doesn't open the details
+const rehypeHeadingLinks: Plugin<[], Root> = () => (tree) => {
+  visit(tree, "element", (node) => {
+    if (node.tagName === "a" || node.tagName === "summary") {
+      return SKIP;
+    }
+    const { id, className } = node.properties;
+    if (
+      !HEADING_TAG.test(node.tagName) ||
+      typeof id !== "string" ||
+      toString(node).trim() === "" ||
+      (Array.isArray(className) && className.includes("sr-only")) ||
+      holdsLink(node)
+    ) {
+      return;
+    }
+    node.children = [
+      {
+        type: "element",
+        tagName: "a",
+        properties: { href: `#${id}`, className: ["heading-link"] },
+        children: node.children,
+      },
+    ];
+  });
+};
+
+// CopyCode.astro puts its button in this box rather than in the pre, where it would scroll away with a long line; a
+// block in a link the post wrote around it gets no box, since a click on the button would follow the link
+const rehypeWrapCodeBlocks: Plugin<[], Root> = () => (tree) => {
+  visit(tree, "element", (node, index, parent) => {
+    if (node.tagName === "a") {
+      return SKIP;
+    }
+    if (node.tagName !== "pre" || !parent || index === undefined) {
+      return;
+    }
+    parent.children[index] = {
+      type: "element",
+      tagName: "div",
+      properties: { className: ["code-block"] },
+      children: [node],
+    };
+    // past the new box, whose pre would otherwise be wrapped again
+    return [SKIP, index + 1];
+  });
+};
+
 // shiki language ids are lowercase, but posts use fences like ```Python
 const rehypeLowercaseLanguage: Plugin<[], Root> = () => (tree) => {
   visit(tree, "element", (node) => {
@@ -183,6 +253,8 @@ const processor = unified()
   .use(rehypeYoutubeOnly)
   .use(rehypePrefixFragmentLinks)
   .use(rehypeCollectPostMeta)
+  .use(rehypeLazyImages)
+  .use(rehypeHeadingLinks)
   .use(rehypeExternalLinks, {
     target: "_blank",
     rel: ["noopener", "noreferrer"],
@@ -192,6 +264,7 @@ const processor = unified()
     themes: { light: "github-light", dark: "github-dark" },
     fallbackLanguage: "text",
   })
+  .use(rehypeWrapCodeBlocks)
   .use(rehypeStringify);
 
 export const renderMarkdown = async (

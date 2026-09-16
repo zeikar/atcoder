@@ -108,6 +108,43 @@ describe("renderMarkdown html", () => {
     expect(tokenStyles(doc).size).toBeGreaterThan(1);
   });
 
+  it("puts each code block in a box for its copy button, leaving the pre as it was", async () => {
+    const doc = await render(
+      "```js\nconst a = 1;\n```\n\n<pre>no code element</pre>\n\n- ```\n  in a list\n  ```",
+    );
+    const blocks = Array.from(doc.querySelectorAll("pre"));
+
+    expect(blocks).toHaveLength(3);
+    for (const pre of blocks) {
+      expect(pre.parentElement?.className).toBe("code-block");
+      expect(pre.parentElement?.children).toHaveLength(1);
+    }
+    // Shiki's tabindex, which lets a keyboard scroll a long line
+    expect(blocks[0].getAttribute("tabindex")).toBe("0");
+    expect(doc.querySelectorAll(".code-block .code-block")).toHaveLength(0);
+  });
+
+  it("gives no box to a code block in a link the post wrote around it, where a copy button would follow the link", async () => {
+    const doc = await render(
+      '<a href="https://example.com">\n\n```js\nconst a = 1;\n```\n\n</a>',
+    );
+
+    expect(doc.querySelector("a pre")).not.toBeNull();
+    expect(doc.querySelector(".code-block")).toBeNull();
+  });
+
+  it("lazy-loads images, whatever the post asks for", async () => {
+    const doc = await render(
+      '![a](https://example.com/a.png)\n\n<img src="https://example.com/b.png" loading="eager">',
+    );
+    const images = Array.from(doc.querySelectorAll("img"));
+
+    expect(images).toHaveLength(2);
+    for (const image of images) {
+      expect(image.getAttribute("loading")).toBe("lazy");
+    }
+  });
+
   it("highlights a capitalized language name", async () => {
     const doc = await render("```Python\ndef f():\n    return 1\n```");
 
@@ -149,6 +186,51 @@ describe("renderMarkdown links and ids", () => {
         ],
       ],
     ]);
+  });
+
+  it("makes each heading's text a link to the heading, leaving its text as it was", async () => {
+    const { html, toc } = await renderMarkdown("# Title\n\n## `code` Body");
+    const doc = new DOMParser().parseFromString(html, "text/html");
+    const headings = Array.from(doc.querySelectorAll("h1, h2"));
+
+    expect(headings).toHaveLength(2);
+    for (const heading of headings) {
+      const link = heading.firstElementChild;
+      expect(heading.children).toHaveLength(1);
+      expect(link?.tagName).toBe("A");
+      expect(link?.getAttribute("href")).toBe(`#${heading.id}`);
+    }
+    expect(headings.map((heading) => heading.textContent)).toEqual([
+      "Title",
+      "code Body",
+    ]);
+    expect(flattenToc(toc).map(({ text }) => text)).toEqual([
+      "Title",
+      "code Body",
+    ]);
+  });
+
+  it("links no heading that has nothing to show or already holds a link", async () => {
+    const doc = await render(
+      "##\n\n## [Docs](https://example.com)\n\nText[^1]\n\n[^1]: Note",
+    );
+
+    // the empty heading, the one with a link, since links can't nest, and the footnotes section's visually hidden
+    // heading, where a link would still take a Tab stop
+    expect(doc.querySelectorAll("h2")).toHaveLength(3);
+    expect(doc.querySelectorAll("h2 a")).toHaveLength(1);
+    expect(doc.querySelector("h2 a")?.getAttribute("href")).toBe(
+      "https://example.com",
+    );
+  });
+
+  it("links no heading in a summary, which a click must still open, or in a link the post wrote around it", async () => {
+    const doc = await render(
+      '<details><summary><h3>Show solution</h3></summary>\n\nx\n\n</details>\n\n<a href="https://example.com">\n\n## Title\n\n</a>',
+    );
+
+    expect(doc.querySelectorAll("h2, h3")).toHaveLength(2);
+    expect(doc.querySelectorAll(".heading-link")).toHaveLength(0);
   });
 
   it("leaves empty headings out of the table of contents", async () => {

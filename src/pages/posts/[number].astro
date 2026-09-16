@@ -2,27 +2,36 @@
 import type { GetStaticPaths, InferGetStaticPropsType } from "astro";
 import { getCollection, render } from "astro:content";
 import Comments from "../../components/Comments.astro";
+import CopyCode from "../../components/CopyCode.astro";
 import JsonLd from "../../components/JsonLd.astro";
 import TagList from "../../components/TagList.astro";
 import Toc from "../../components/Toc";
 import Base from "../../layouts/Base.astro";
 import { siteConfig } from "../../lib/config";
-import { formatDate } from "../../lib/datetime";
-import { withBase } from "../../lib/links";
+import { editedADayLater, formatDate } from "../../lib/datetime";
+import { postPath, withBase } from "../../lib/links";
+import { byNewest } from "../../lib/posts";
 import { absoluteUrl, blogPostingJsonLd, shareableImage } from "../../lib/seo";
 import { getSite } from "../../lib/site";
 
 export const getStaticPaths = (async () => {
-  const posts = await getCollection("posts");
-  return posts.map((entry) => ({
+  // in the index's order, so the newer and older posts are the ones listed next to this one
+  const posts = (await getCollection("posts")).sort((a, b) =>
+    byNewest(a.data, b.data),
+  );
+  return posts.map((entry, index) => ({
     params: { number: entry.id },
-    props: { entry },
+    props: {
+      entry,
+      newer: posts[index - 1]?.data,
+      older: posts[index + 1]?.data,
+    },
   }));
 }) satisfies GetStaticPaths;
 
 type Props = InferGetStaticPropsType<typeof getStaticPaths>;
 
-const { entry } = Astro.props;
+const { entry, newer, older } = Astro.props;
 const { data } = entry;
 const { Content } = await render(entry);
 const sourceName = siteConfig.source === "issues" ? "Issue" : "Discussion";
@@ -99,6 +108,16 @@ const image = shareableImage(data.thumbnail);
             {formatDate(data.createdAt, "long", siteConfig.language)}
           </time>
         </dd>
+        {editedADayLater(data.createdAt, data.updatedAt) && (
+          <>
+            <dt class="text-muted">Updated</dt>
+            <dd>
+              <time datetime={data.updatedAt} data-local-date="long">
+                {formatDate(data.updatedAt, "long", siteConfig.language)}
+              </time>
+            </dd>
+          </>
+        )}
         <dt class="text-muted">Comments</dt>
         <dd class="tabular-nums">{data.commentCount}</dd>
         <dt class="text-muted">Source</dt>
@@ -125,6 +144,39 @@ const image = shareableImage(data.thumbnail);
       >
         <Content />
       </article>
+      <CopyCode />
+      {(newer || older) && (
+        <nav
+          aria-label="Newer and older posts"
+          class="mt-14 grid gap-4 border-t border-rule pt-6 sm:grid-cols-2 sm:gap-8"
+        >
+          {[
+            { label: "Newer", post: newer },
+            { label: "Older", post: older },
+          ].map(
+            ({ label, post }) =>
+              post && (
+                <a
+                  href={withBase(
+                    import.meta.env.BASE_URL,
+                    postPath(post.number),
+                  )}
+                  class:list={[
+                    "group block break-keep break-words",
+                    // the right column even when there is no newer post, so older posts stay on the same side
+                    label === "Older" && "sm:col-start-2 sm:text-right",
+                  ]}
+                >
+                  <span class="mb-0.5 block text-sm text-muted">{label}</span>
+                  {/* a stroke drawn under a post's title, as in the index and search results */}
+                  <span class="marker-draw font-semibold group-hover:stroke-drawn">
+                    {post.title}
+                  </span>
+                </a>
+              ),
+          )}
+        </nav>
+      )}
       <div class="mt-14 border-t border-rule pt-6" data-pagefind-ignore>
         <Comments number={data.number} />
       </div>
