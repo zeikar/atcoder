@@ -1,0 +1,59 @@
+name: Update sites
+
+# Runs only in zeikar/repozine: after main deploys, it brings that commit to the owner's sites the way
+# "Updating Repozine" in the README does, and each push deploys that site. A repository made from the template can
+# delete this file. REPOZINE_SYNC_TOKEN is a fine-grained token with Contents and Workflows write on the sites:
+# pushes made with GITHUB_TOKEN start no workflows, and it can't push a change to a workflow file.
+on:
+  workflow_run:
+    workflows: [Deploy to GitHub Pages]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+permissions: {}
+
+# every Deploy completion starts a run here, skipped ones included, so a sync waiting its turn must not be replaced
+concurrency:
+  group: update-sites
+  cancel-in-progress: false
+  queue: max
+
+jobs:
+  update:
+    # a push brings the new commits; issue and discussion events only rebuild main. Deploy keeps one run waiting, so
+    # a push whose Deploy is replaced by an issue or discussion event is synced by the next push or a manual run
+    if: >-
+      github.repository == 'zeikar/repozine' &&
+      ((github.event_name == 'workflow_run' &&
+      github.event.workflow_run.event == 'push' &&
+      github.event.workflow_run.conclusion == 'success') ||
+      (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'))
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        site: [leetcode, atcoder]
+    steps:
+      - name: Merge Repozine into the site's repozine branch
+        env:
+          SITE: zeikar/${{ matrix.site }}
+          TOKEN: ${{ secrets.REPOZINE_SYNC_TOKEN }}
+          # the commit that deployed, not main's tip, which may not have passed its tests yet; a manual run takes the tip
+          SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+        run: |
+          git clone --branch repozine --single-branch "https://x-access-token:$TOKEN@github.com/$SITE.git" site
+          cd site
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch https://github.com/zeikar/repozine.git main
+          # the site keeps its config.json, which also settles a conflict there; a conflict in any other file stops
+          # the commit below. --no-ff, because a fast-forward would take main's config.json before it could be kept
+          git merge --no-commit --no-ff "$SHA" || test -n "$(git diff --name-only --diff-filter=U)"
+          git checkout HEAD -- config.json
+          if git diff --cached --quiet; then
+            echo "$SITE is up to date"
+            exit 0
+          fi
+          git commit -m "Update Repozine"
+          git push origin repozine
