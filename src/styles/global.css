@@ -92,8 +92,27 @@
 
 /* a link around an image or inline code keeps the typography plugin's underline: a background line would run beneath
    the image, and sits less than a pixel below the code's own background, which partly hides it in Safari */
-.prose a:not(:has(img, code)) {
+.prose a:not(:has(img, code), .heading-link) {
   @apply pen-link;
+}
+
+/* a heading's text is a link to the heading (see rehypeHeadingLinks) that looks like the heading itself, with a "#"
+   after it while hovered or focused. The "#" is left out of the link's accessible name, and it always takes its space,
+   so showing it can't rewrap the heading */
+.prose .heading-link {
+  color: inherit;
+  font-weight: inherit;
+  text-decoration: none;
+  &::after {
+    content: "#" / "";
+    margin-inline-start: 0.4em;
+    color: var(--color-faint);
+    font-weight: 400;
+    visibility: hidden;
+  }
+  &:is(:hover, :focus-visible)::after {
+    visibility: visible;
+  }
 }
 
 /* a highlighter stroke under the lower part of the text, the way a reader marks a study note */
@@ -197,6 +216,23 @@ mark {
 .prose pre {
   border: 1px solid var(--color-rule);
   border-radius: 8px;
+}
+
+/* CopyCode.astro puts its button in the box that rehypeWrapCodeBlocks puts around each pre. The box takes over the
+   pre's margins (the typography plugin's 1.7142857em, at the pre's 0.875em font size), so the button's corner is the
+   pre's; in :where() so the rule that removes the space after a heading still wins */
+.prose :where(.code-block) {
+  position: relative;
+  margin-block: 1.5em;
+}
+
+.prose .code-block > pre {
+  margin-block: 0;
+  /* a touch screen always shows the button, so leave room for it at the end of a first line scrolled all the way; this
+     can make a block that fit scroll, which a pointer device, where the button shows only on hover, is spared */
+  @media (hover: none) {
+    padding-inline-end: 4.5rem;
+  }
 }
 
 /* Shiki inlines the light theme, including a #fff background, and exposes the dark one as variables */
