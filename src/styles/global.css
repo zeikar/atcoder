@@ -165,6 +165,20 @@ mark {
   color: var(--color-on-marker);
 }
 
+/* a search in progress: a segment 40% of its track wide, moved from just off the left edge to just off the right */
+@theme {
+  --animate-sweep: sweep 1.2s ease-in-out infinite;
+
+  @keyframes sweep {
+    from {
+      transform: translateX(-100%);
+    }
+    to {
+      transform: translateX(250%);
+    }
+  }
+}
+
 /* in the base layer so a selection: utility can override it on the marker-filled current tag and page */
 @layer base {
   ::selection {
