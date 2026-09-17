@@ -196,6 +196,24 @@ const rehypeCollectPostMeta: Plugin<[], Root> = () => (tree, file) => {
   };
 };
 
+// global.css lets an embed shrink to a narrow column, as YouTube's embed code sets width="560"; its width and height as an
+// aspect ratio keep it the shape it was given. An embed without both as numbers, such as width="100%", keeps its height
+const rehypeEmbedAspectRatio: Plugin<[], Root> = () => (tree) => {
+  visit(tree, "element", (node) => {
+    const width = Number(node.properties.width);
+    const height = Number(node.properties.height);
+    if (
+      node.tagName === "iframe" &&
+      Number.isFinite(width) &&
+      Number.isFinite(height) &&
+      width > 0 &&
+      height > 0
+    ) {
+      node.properties.style = `aspect-ratio: ${width} / ${height}; height: auto`;
+    }
+  });
+};
+
 const rehypeLazyImages: Plugin<[], Root> = () => (tree) => {
   visit(tree, "element", (node) => {
     if (node.tagName === "img") {
@@ -318,6 +336,7 @@ const processor = unified()
   .use(rehypePrefixFragmentLinks)
   .use(rehypeCollectPostMeta)
   .use(rehypeCaptureFeedHtml)
+  .use(rehypeEmbedAspectRatio)
   .use(rehypeLazyImages)
   .use(rehypeHeadingLinks)
   .use(rehypeExternalLinks, {

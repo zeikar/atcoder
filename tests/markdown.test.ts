@@ -116,6 +116,24 @@ describe("renderMarkdown html", () => {
     expect(frame?.hasAttribute("allowfullscreen")).toBe(true);
   });
 
+  it("gives an embed with a width and height their shape, so it can shrink to a narrow column without distorting", async () => {
+    const { html, feedHtml } = await renderMarkdown(
+      '<iframe width="560" height="315" src="https://www.youtube.com/embed/a"></iframe>\n\n<iframe width="100%" height="400" src="https://www.youtube.com/embed/b"></iframe>',
+    );
+    const [sized, unsized] = Array.from(
+      new DOMParser()
+        .parseFromString(html, "text/html")
+        .querySelectorAll("iframe"),
+    );
+
+    expect(sized.style.aspectRatio).toBe("560 / 315");
+    expect(sized.style.height).toBe("auto");
+    // no ratio to keep, so it keeps the height it was given
+    expect(unsized.hasAttribute("style")).toBe(false);
+    // a feed reader has its own layout
+    expect(feedHtml).not.toContain("style=");
+  });
+
   it("opens external links in a new tab", async () => {
     const link = (await render("[site](https://example.com)")).querySelector(
       "a",

@@ -235,6 +235,11 @@ mark {
   }
 }
 
+/* an embed never runs past the column; rehypeEmbedAspectRatio keeps its shape as it shrinks */
+.prose iframe {
+  max-width: 100%;
+}
+
 /* Shiki inlines the light theme, including a #fff background, and exposes the dark one as variables */
 .prose pre.shiki {
   background-color: var(--color-surface) !important;
