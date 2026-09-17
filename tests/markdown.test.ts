@@ -1,4 +1,6 @@
 // @vitest-environment jsdom
+// @ts-expect-error: the project has no @types/node (see src/lib/github.ts)
+import { readFileSync } from "node:fs";
 import { beforeAll, describe, expect, it } from "vitest";
 import { renderMarkdown } from "../src/lib/markdown";
 import { nestHeadings, type TocItem } from "../src/lib/toc";
@@ -24,6 +26,33 @@ const tokenStyles = (doc: Document): Set<string | null> =>
       span.getAttribute("style"),
     ),
   );
+
+// the code background in each theme, read from the tokens in global.css
+const SURFACE = (() => {
+  // read from disk, since vitest hands CSS imports over empty; it runs from the project root
+  const css: string = readFileSync("src/styles/global.css", "utf8").replace(
+    /\/\*[\s\S]*?\*\//g,
+    "",
+  );
+  const [light, dark] = Array.from(
+    css.matchAll(/--color-surface:\s*(#[0-9a-f]{6})/gi),
+    (match) => match[1],
+  );
+  return { light, dark };
+})();
+
+// WCAG contrast ratio of two sRGB hex colors
+const contrast = (a: string, b: string): number => {
+  const luminance = (hex: string) => {
+    const [r, g, bl] = [1, 3, 5].map((i) => {
+      const c = parseInt(hex.slice(i, i + 2), 16) / 255;
+      return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+    });
+    return 0.2126 * r + 0.7152 * g + 0.0722 * bl;
+  };
+  const [high, low] = [luminance(a), luminance(b)].sort((x, y) => y - x);
+  return (high + 0.05) / (low + 0.05);
+};
 
 const flattenToc = (items: TocItem[]): TocItem[] =>
   items.flatMap((item) => [item, ...flattenToc(item.children)]);
@@ -87,6 +116,24 @@ describe("renderMarkdown html", () => {
     expect(frame?.hasAttribute("allowfullscreen")).toBe(true);
   });
 
+  it("gives an embed with a width and height their shape, so it can shrink to a narrow column without distorting", async () => {
+    const { html, feedHtml } = await renderMarkdown(
+      '<iframe width="560" height="315" src="https://www.youtube.com/embed/a"></iframe>\n\n<iframe width="100%" height="400" src="https://www.youtube.com/embed/b"></iframe>',
+    );
+    const [sized, unsized] = Array.from(
+      new DOMParser()
+        .parseFromString(html, "text/html")
+        .querySelectorAll("iframe"),
+    );
+
+    expect(sized.style.aspectRatio).toBe("560 / 315");
+    expect(sized.style.height).toBe("auto");
+    // no ratio to keep, so it keeps the height it was given
+    expect(unsized.hasAttribute("style")).toBe(false);
+    // a feed reader has its own layout
+    expect(feedHtml).not.toContain("style=");
+  });
+
   it("opens external links in a new tab", async () => {
     const link = (await render("[site](https://example.com)")).querySelector(
       "a",
@@ -142,6 +189,57 @@ describe("renderMarkdown html", () => {
     expect(images).toHaveLength(2);
     for (const image of images) {
       expect(image.getAttribute("loading")).toBe("lazy");
+    }
+  });
+
+  it("keeps every code color at 4.5:1 against the code background, in both themes", async () => {
+    const { html } = await renderMarkdown(
+      [
+        "```python",
+        "@cache",
+        "def solve(self, nums: List[int], k=3) -> int:",
+        '    """docstring"""',
+        "    # a comment",
+        "    return len(nums) + 1 if nums else f'{k}'",
+        "```",
+        "```cpp",
+        "#include <vector>",
+        "template <typename T> T add(const T& a) { return a << 2; } // note",
+        "```",
+        "```ts",
+        "const re = /a+b/g; export class A extends B { private x?: number = 0x1f; }",
+        "```",
+        "```diff",
+        "- removed",
+        "+ added",
+        "```",
+      ].join("\n"),
+    );
+    const doc = new DOMParser().parseFromString(html, "text/html");
+    const styles = Array.from(
+      doc.querySelectorAll("pre.shiki span[style]"),
+      (span) => span.getAttribute("style")!,
+    );
+    const light = styles.flatMap(
+      (style) => style.match(/(?:^|;)color:(#[0-9a-f]{6})/i)?.[1] ?? [],
+    );
+    const dark = styles.flatMap(
+      (style) => style.match(/--shiki-dark:(#[0-9a-f]{6})/i)?.[1] ?? [],
+    );
+
+    expect(new Set(light).size).toBeGreaterThan(5);
+    expect(new Set(dark).size).toBeGreaterThan(5);
+    for (const color of new Set(light)) {
+      expect([color, contrast(color, SURFACE.light)]).toEqual([
+        color,
+        expect.toSatisfy((ratio: number) => ratio >= 4.5),
+      ]);
+    }
+    for (const color of new Set(dark)) {
+      expect([color, contrast(color, SURFACE.dark)]).toEqual([
+        color,
+        expect.toSatisfy((ratio: number) => ratio >= 4.5),
+      ]);
     }
   });
 
@@ -279,6 +377,63 @@ describe("renderMarkdown links and ids", () => {
     for (const element of Array.from(doc.querySelectorAll("[id]"))) {
       expect(element.id).not.toContain("user-content-user-content-");
     }
+  });
+});
+
+describe("renderMarkdown feed html", () => {
+  it("is the sanitized post without what the site adds to it: highlighting, heading links and copy boxes", async () => {
+    const { feedHtml } = await renderMarkdown(
+      [
+        "## Title",
+        "",
+        '<img src="x" onerror="alert(1)">',
+        "",
+        "```python",
+        'print("<hi>")',
+        "```",
+        "",
+        '<iframe src="https://evil.example"></iframe>',
+      ].join("\n"),
+    );
+    const doc = new DOMParser().parseFromString(feedHtml, "text/html");
+
+    expect(doc.querySelector("h2")?.textContent).toBe("Title");
+    expect(doc.querySelector("h2 a")).toBeNull();
+    expect(doc.querySelector("pre > code")?.textContent).toBe(
+      'print("<hi>")\n',
+    );
+    expect(doc.querySelector("[style]")).toBeNull();
+    expect(doc.querySelector(".code-block")).toBeNull();
+    expect(doc.querySelector("img")?.hasAttribute("onerror")).toBe(false);
+    expect(doc.querySelector("iframe")).toBeNull();
+  });
+
+  it("points in-page links at the post's address, since a feed reader shows the post away from its page", async () => {
+    const markdown = [
+      "## Title",
+      "",
+      '[jump](#title) and `href="#main"`',
+      "",
+      "```html",
+      '<a href="#main">skip</a>',
+      "```",
+    ].join("\n");
+    const postUrl = "https://zeikar.dev/leetcode/posts/7/";
+    const { feedHtml, html } = await renderMarkdown(markdown, { postUrl });
+    const feed = new DOMParser().parseFromString(feedHtml, "text/html");
+    const page = new DOMParser().parseFromString(html, "text/html");
+
+    expect(feed.querySelector("p a")?.getAttribute("href")).toBe(
+      `${postUrl}#user-content-title`,
+    );
+    // only links change, not text that happens to look like one
+    expect(feed.querySelector("p code")?.textContent).toBe('href="#main"');
+    expect(feed.querySelector("pre code")?.textContent).toBe(
+      '<a href="#main">skip</a>\n',
+    );
+    expect(page.querySelector("p a")?.getAttribute("href")).toBe(
+      "#user-content-title",
+    );
   });
 });
 

@@ -27,6 +27,9 @@ type PostMeta = {
 declare module "vfile" {
   interface DataMap {
     postMeta: PostMeta;
+    feedHtml: string;
+    // the post's absolute address, for the links in feedHtml
+    postUrl: string;
   }
 }
 
@@ -36,6 +39,8 @@ export type RenderedMarkdown = {
   excerpt: string;
   thumbnail: string | null;
   searchText: string;
+  // the post for feeds (see rehypeCaptureFeedHtml)
+  feedHtml: string;
 };
 
 const EXCERPT_LENGTH = 200;
@@ -191,6 +196,24 @@ const rehypeCollectPostMeta: Plugin<[], Root> = () => (tree, file) => {
   };
 };
 
+// global.css lets an embed shrink to a narrow column, as YouTube's embed code sets width="560"; its width and height as an
+// aspect ratio keep it the shape it was given. An embed without both as numbers, such as width="100%", keeps its height
+const rehypeEmbedAspectRatio: Plugin<[], Root> = () => (tree) => {
+  visit(tree, "element", (node) => {
+    const width = Number(node.properties.width);
+    const height = Number(node.properties.height);
+    if (
+      node.tagName === "iframe" &&
+      Number.isFinite(width) &&
+      Number.isFinite(height) &&
+      width > 0 &&
+      height > 0
+    ) {
+      node.properties.style = `aspect-ratio: ${width} / ${height}; height: auto`;
+    }
+  });
+};
+
 const rehypeLazyImages: Plugin<[], Root> = () => (tree) => {
   visit(tree, "element", (node) => {
     if (node.tagName === "img") {
@@ -275,6 +298,30 @@ const rehypeLowercaseLanguage: Plugin<[], Root> = () => (tree) => {
   });
 };
 
+const feedStringifier = unified().use(rehypeStringify);
+
+// the post as a feed carries it: sanitized, and without what the rest of the pipeline adds for the site's own page, such
+// as heading links and highlighted code, whose inline styles make up three quarters of a post's HTML and which a feed
+// reader mostly drops. A reader shows the post away from its page, so in-page links (#user-content-…) get the post's
+// address; they change on a copy, since the page keeps them as they are
+const rehypeCaptureFeedHtml: Plugin<[], Root> = () => (tree, file) => {
+  const feed = structuredClone(tree);
+  const { postUrl } = file.data;
+  if (postUrl !== undefined) {
+    visit(feed, "element", (node) => {
+      const { href } = node.properties;
+      if (
+        node.tagName === "a" &&
+        typeof href === "string" &&
+        href.startsWith("#")
+      ) {
+        node.properties.href = postUrl + href;
+      }
+    });
+  }
+  file.data.feedHtml = feedStringifier.stringify(feed);
+};
+
 const processor = unified()
   .use(remarkParse)
   .use(remarkGfm)
@@ -288,6 +335,8 @@ const processor = unified()
   .use(rehypeYoutubeOnly)
   .use(rehypePrefixFragmentLinks)
   .use(rehypeCollectPostMeta)
+  .use(rehypeCaptureFeedHtml)
+  .use(rehypeEmbedAspectRatio)
   .use(rehypeLazyImages)
   .use(rehypeHeadingLinks)
   .use(rehypeExternalLinks, {
@@ -296,7 +345,11 @@ const processor = unified()
   })
   .use(rehypeLowercaseLanguage)
   .use(rehypeShiki, {
-    themes: { light: "github-light", dark: "github-dark" },
+    // GitHub's current themes: the older github-light and github-dark fall below 4.5:1 on the code background
+    // (--color-surface in global.css), such as the light keyword red at 4.2:1 and the dark comment gray at 3.6:1
+    themes: { light: "github-light-default", dark: "github-dark-default" },
+    // the light theme's comment gray is still 4.2:1 there, so comments take the site's muted text color, at 5.3:1
+    colorReplacements: { "github-light-default": { "#6e7781": "#5f6672" } },
     fallbackLanguage: "text",
   })
   .use(rehypeWrapCodeBlocks)
@@ -304,8 +357,9 @@ const processor = unified()
 
 export const renderMarkdown = async (
   markdown: string,
+  { postUrl }: { postUrl?: string } = {},
 ): Promise<RenderedMarkdown> => {
-  const file = await processor.process(markdown);
+  const file = await processor.process({ value: markdown, data: { postUrl } });
   // rehypeCollectPostMeta runs on every file
   const { headings, thumbnail, text, searchText } = file.data.postMeta!;
   // cut by code point so an emoji at the boundary is not left as a lone surrogate
@@ -320,5 +374,7 @@ export const renderMarkdown = async (
         : text,
     thumbnail,
     searchText,
+    // rehypeCaptureFeedHtml runs on every file too
+    feedHtml: file.data.feedHtml!,
   };
 };
