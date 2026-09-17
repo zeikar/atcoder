@@ -104,16 +104,23 @@ describe("renderMarkdown html", () => {
     }
   });
 
-  it("keeps YouTube embeds, which existing posts use", async () => {
+  it("keeps YouTube embeds, which existing posts use, on YouTube's no-cookie host", async () => {
     const doc = await render(
-      '<iframe width="560" height="315" src="https://www.youtube.com/embed/GTJr8OvyEVQ" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; encrypted-media" allowfullscreen></iframe>',
+      [
+        '<iframe width="560" height="315" src="https://www.youtube.com/embed/GTJr8OvyEVQ?start=30" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; encrypted-media" allowfullscreen></iframe>',
+        '<iframe src="https://www.youtube-nocookie.com/embed/UTCScjoPymA"></iframe>',
+      ].join("\n\n"),
     );
-    const frame = doc.querySelector("iframe");
+    const [frame, nocookie] = Array.from(doc.querySelectorAll("iframe"));
 
-    expect(frame?.getAttribute("src")).toBe(
-      "https://www.youtube.com/embed/GTJr8OvyEVQ",
+    // the youtube.com player loads ad trackers and sets cookies as the page opens, before anyone plays it
+    expect(frame.getAttribute("src")).toBe(
+      "https://www.youtube-nocookie.com/embed/GTJr8OvyEVQ?start=30",
     );
-    expect(frame?.hasAttribute("allowfullscreen")).toBe(true);
+    expect(frame.hasAttribute("allowfullscreen")).toBe(true);
+    expect(nocookie.getAttribute("src")).toBe(
+      "https://www.youtube-nocookie.com/embed/UTCScjoPymA",
+    );
   });
 
   it("gives an embed with a width and height their shape, so it can shrink to a narrow column without distorting", async () => {

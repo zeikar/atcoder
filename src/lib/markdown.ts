@@ -79,6 +79,12 @@ const rehypeYoutubeOnly: Plugin<[], Root> = () => (tree) => {
     }
     // a named frame could be navigated to another origin by a link or form with target="<name>"
     delete node.properties.name;
+    // the youtube.com player loads ad trackers and sets cookies as the page opens, before anyone plays the video;
+    // youtube-nocookie.com does neither, then or while playing
+    node.properties.src = src.replace(
+      /^https:\/\/www\.youtube\.com\//,
+      "https://www.youtube-nocookie.com/",
+    );
   });
 };
 
