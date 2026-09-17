@@ -54,7 +54,8 @@ const TocList = ({
           onClick={(event) => scrollToHeading(event, item.id)}
           aria-current={activeId === item.id ? "true" : undefined}
           className={
-            "block border-l-2 py-1 pl-3 leading-snug break-keep break-words " +
+            // the focus ring is drawn inside the link, since the list's scroll box would clip it outside
+            "block border-l-2 py-1 pl-3 leading-snug break-keep break-words focus-visible:-outline-offset-2 " +
             (activeId === item.id
               ? "border-fg font-semibold text-fg"
               : "border-rule text-muted hover:text-fg")

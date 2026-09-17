@@ -184,6 +184,14 @@ mark {
   color: var(--color-on-marker);
 }
 
+/* forced colors drop the stroke's gradient, which would leave a match looking like the words around it */
+@media (forced-colors: active) {
+  mark {
+    background: Mark;
+    color: MarkText;
+  }
+}
+
 /* a search in progress: a segment 40% of its track wide, moved from just off the left edge to just off the right */
 @theme {
   --animate-sweep: sweep 1.2s ease-in-out infinite;
