@@ -172,18 +172,26 @@ export const fetchDiscussionCategory = async (
   const { repository } = await githubGraphql<{
     repository: {
       id: string;
+      hasDiscussionsEnabled: boolean;
       discussionCategories: { nodes: DiscussionCategory[] };
     };
   }>(
     `query ($owner: String!, $repo: String!) {
       repository(owner: $owner, name: $repo) {
         id
+        hasDiscussionsEnabled
         discussionCategories(first: 100) { nodes { id name slug } }
       }
     }`,
     { owner, repo },
   );
 
+  // a repository made from the template starts with Discussions off, and would otherwise only hear that no slug matches
+  if (!repository.hasDiscussionsEnabled) {
+    throw new Error(
+      `config.json: "source" is "discussions", but Discussions are turned off in ${owner}/${repo}; turn them on in its Settings under Features, or set "source": "issues"`,
+    );
+  }
   const categories = repository.discussionCategories.nodes;
   const category = categories.find((candidate) => candidate.slug === slug);
   if (category === undefined) {
@@ -242,15 +250,35 @@ type Profile = {
 };
 
 export const fetchProfile = async (login: string): Promise<Profile> => {
-  const { user } = await githubGraphql<{ user: Profile }>(
+  // repositoryOwner rather than user, which answers an organization with a bare NOT_FOUND error
+  const { repositoryOwner } = await githubGraphql<{
+    repositoryOwner:
+      ({ __typename: "User" } & Profile) | { __typename: string } | null;
+  }>(
     `query ($login: String!) {
-      user(login: $login) {
-        login name bio avatarUrl url
-        followers { totalCount }
-        following { totalCount }
+      repositoryOwner(login: $login) {
+        __typename
+        ... on User {
+          login name bio avatarUrl url
+          followers { totalCount }
+          following { totalCount }
+        }
       }
     }`,
     { login },
   );
-  return user;
+  if (repositoryOwner === null) {
+    throw new Error(
+      `config.json: there is no GitHub account named "${login}" for "repoOwner"`,
+    );
+  }
+  if (!("login" in repositoryOwner) || repositoryOwner.__typename !== "User") {
+    // only posts written by repoOwner are published, and an organization writes none. repoOwner also has to name the
+    // repository the build runs in, so the fix is moving the repository, not changing the setting
+    throw new Error(
+      `config.json: "repoOwner" "${login}" is an organization, which writes no issues or discussions of its own; Repozine publishes its owner's posts, so the repository has to belong to a user account`,
+    );
+  }
+  const { __typename: _, ...profile } = repositoryOwner;
+  return profile;
 };
