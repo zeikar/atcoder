@@ -55,11 +55,10 @@ const posts = defineCollection({
 
       store.clear();
       for (const post of trusted) {
-        const { html, toc, excerpt, thumbnail } = await renderMarkdown(
-          post.body,
-        ).catch((error: unknown) => {
-          throw new Error(`rendering ${post.url} failed`, { cause: error });
-        });
+        const { html, toc, excerpt, thumbnail, searchText } =
+          await renderMarkdown(post.body).catch((error: unknown) => {
+            throw new Error(`rendering ${post.url} failed`, { cause: error });
+          });
         const id = String(post.number);
         const data = await parseData({
           id,
@@ -74,6 +73,7 @@ const posts = defineCollection({
             excerpt,
             thumbnail,
             toc,
+            searchText,
           },
         });
         store.set({ id, data, rendered: { html } });
@@ -102,6 +102,8 @@ const posts = defineCollection({
     excerpt: z.string(),
     thumbnail: z.string().nullable(),
     toc: z.array(tocItem),
+    // the post's plain text for search.json
+    searchText: z.string(),
   }),
 });
 

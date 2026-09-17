@@ -174,7 +174,7 @@
   }
 }
 
-/* Pagefind wraps matched words in <mark>, so search results get the same stroke */
+/* search results wrap matched words in <mark>, so they get the same stroke */
 .prose strong,
 mark {
   @apply marker-stroke;

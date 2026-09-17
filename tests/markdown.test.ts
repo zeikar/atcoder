@@ -282,6 +282,34 @@ describe("renderMarkdown links and ids", () => {
   });
 });
 
+describe("renderMarkdown search text", () => {
+  it("keeps headings and code, and leaves out bare addresses and the footnotes heading", async () => {
+    const { searchText } = await renderMarkdown(
+      "# Problem link\n\nhttps://leetcode.com/problems/two-sum\n\n[the docs](https://example.com) say\n\n```python\nimport heapq\n```\n\nText[^1]\n\n[^1]: Note",
+    );
+
+    expect(searchText).toContain("Problem link");
+    expect(searchText).toContain("the docs say");
+    expect(searchText).toContain("import heapq");
+    expect(searchText).not.toContain("leetcode.com");
+    expect(searchText).toContain("Note");
+    expect(searchText).not.toContain("Footnotes");
+    expect(searchText).not.toContain("↩");
+    expect(searchText).not.toMatch(/\s{2}/);
+  });
+
+  it("keeps words apart where elements separate them", async () => {
+    const { searchText, excerpt } = await renderMarkdown(
+      "<p>줄1<br>줄2</p>\n\n| 셀1 | 셀2 |\n| --- | --- |\n| 셀3 | 셀4 |\n\n<details><summary>힌트</summary>숨긴 내용</details>",
+    );
+
+    for (const words of ["줄1 줄2", "셀1 셀2", "셀3 셀4", "힌트 숨긴"]) {
+      expect(searchText).toContain(words);
+    }
+    expect(excerpt).toContain("줄1 줄2");
+  });
+});
+
 describe("renderMarkdown excerpt and thumbnail", () => {
   it("returns decoded text without markup, so it must never be rendered as HTML", async () => {
     const { excerpt } = await renderMarkdown(
