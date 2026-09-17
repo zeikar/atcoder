@@ -1,4 +1,6 @@
 // @vitest-environment jsdom
+// @ts-expect-error: the project has no @types/node (see src/lib/github.ts)
+import { readFileSync } from "node:fs";
 import { beforeAll, describe, expect, it } from "vitest";
 import { renderMarkdown } from "../src/lib/markdown";
 import { nestHeadings, type TocItem } from "../src/lib/toc";
@@ -24,6 +26,33 @@ const tokenStyles = (doc: Document): Set<string | null> =>
       span.getAttribute("style"),
     ),
   );
+
+// the code background in each theme, read from the tokens in global.css
+const SURFACE = (() => {
+  // read from disk, since vitest hands CSS imports over empty; it runs from the project root
+  const css: string = readFileSync("src/styles/global.css", "utf8").replace(
+    /\/\*[\s\S]*?\*\//g,
+    "",
+  );
+  const [light, dark] = Array.from(
+    css.matchAll(/--color-surface:\s*(#[0-9a-f]{6})/gi),
+    (match) => match[1],
+  );
+  return { light, dark };
+})();
+
+// WCAG contrast ratio of two sRGB hex colors
+const contrast = (a: string, b: string): number => {
+  const luminance = (hex: string) => {
+    const [r, g, bl] = [1, 3, 5].map((i) => {
+      const c = parseInt(hex.slice(i, i + 2), 16) / 255;
+      return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+    });
+    return 0.2126 * r + 0.7152 * g + 0.0722 * bl;
+  };
+  const [high, low] = [luminance(a), luminance(b)].sort((x, y) => y - x);
+  return (high + 0.05) / (low + 0.05);
+};
 
 const flattenToc = (items: TocItem[]): TocItem[] =>
   items.flatMap((item) => [item, ...flattenToc(item.children)]);
@@ -142,6 +171,57 @@ describe("renderMarkdown html", () => {
     expect(images).toHaveLength(2);
     for (const image of images) {
       expect(image.getAttribute("loading")).toBe("lazy");
+    }
+  });
+
+  it("keeps every code color at 4.5:1 against the code background, in both themes", async () => {
+    const { html } = await renderMarkdown(
+      [
+        "```python",
+        "@cache",
+        "def solve(self, nums: List[int], k=3) -> int:",
+        '    """docstring"""',
+        "    # a comment",
+        "    return len(nums) + 1 if nums else f'{k}'",
+        "```",
+        "```cpp",
+        "#include <vector>",
+        "template <typename T> T add(const T& a) { return a << 2; } // note",
+        "```",
+        "```ts",
+        "const re = /a+b/g; export class A extends B { private x?: number = 0x1f; }",
+        "```",
+        "```diff",
+        "- removed",
+        "+ added",
+        "```",
+      ].join("\n"),
+    );
+    const doc = new DOMParser().parseFromString(html, "text/html");
+    const styles = Array.from(
+      doc.querySelectorAll("pre.shiki span[style]"),
+      (span) => span.getAttribute("style")!,
+    );
+    const light = styles.flatMap(
+      (style) => style.match(/(?:^|;)color:(#[0-9a-f]{6})/i)?.[1] ?? [],
+    );
+    const dark = styles.flatMap(
+      (style) => style.match(/--shiki-dark:(#[0-9a-f]{6})/i)?.[1] ?? [],
+    );
+
+    expect(new Set(light).size).toBeGreaterThan(5);
+    expect(new Set(dark).size).toBeGreaterThan(5);
+    for (const color of new Set(light)) {
+      expect([color, contrast(color, SURFACE.light)]).toEqual([
+        color,
+        expect.toSatisfy((ratio: number) => ratio >= 4.5),
+      ]);
+    }
+    for (const color of new Set(dark)) {
+      expect([color, contrast(color, SURFACE.dark)]).toEqual([
+        color,
+        expect.toSatisfy((ratio: number) => ratio >= 4.5),
+      ]);
     }
   });
 

@@ -296,7 +296,11 @@ const processor = unified()
   })
   .use(rehypeLowercaseLanguage)
   .use(rehypeShiki, {
-    themes: { light: "github-light", dark: "github-dark" },
+    // GitHub's current themes: the older github-light and github-dark fall below 4.5:1 on the code background
+    // (--color-surface in global.css), such as the light keyword red at 4.2:1 and the dark comment gray at 3.6:1
+    themes: { light: "github-light-default", dark: "github-dark-default" },
+    // the light theme's comment gray is still 4.2:1 there, so comments take the site's muted text color, at 5.3:1
+    colorReplacements: { "github-light-default": { "#6e7781": "#5f6672" } },
     fallbackLanguage: "text",
   })
   .use(rehypeWrapCodeBlocks)
