@@ -8,8 +8,10 @@ import {
   fetchProfile,
   fetchRepositoryDescription,
 } from "./lib/github";
+import { postPath } from "./lib/links";
 import { renderMarkdown } from "./lib/markdown";
 import { isTrustedPost, toPost } from "./lib/posts";
+import { siteUrl } from "./lib/seo";
 import { tagSlug } from "./lib/tags";
 import type { TocItem } from "./lib/toc";
 
@@ -55,8 +57,14 @@ const posts = defineCollection({
 
       store.clear();
       for (const post of trusted) {
-        const { html, toc, excerpt, thumbnail, searchText } =
-          await renderMarkdown(post.body).catch((error: unknown) => {
+        const { html, toc, excerpt, thumbnail, searchText, feedHtml } =
+          await renderMarkdown(post.body, {
+            postUrl: siteUrl(
+              import.meta.env.BASE_URL,
+              postPath(post.number),
+              import.meta.env.SITE ? new URL(import.meta.env.SITE) : undefined,
+            ),
+          }).catch((error: unknown) => {
             throw new Error(`rendering ${post.url} failed`, { cause: error });
           });
         const id = String(post.number);
@@ -74,6 +82,7 @@ const posts = defineCollection({
             thumbnail,
             toc,
             searchText,
+            feedHtml,
           },
         });
         store.set({ id, data, rendered: { html } });
@@ -104,6 +113,8 @@ const posts = defineCollection({
     toc: z.array(tocItem),
     // the post's plain text for search.json
     searchText: z.string(),
+    // the post's HTML for rss.xml
+    feedHtml: z.string(),
   }),
 });
 

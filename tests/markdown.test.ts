@@ -362,6 +362,63 @@ describe("renderMarkdown links and ids", () => {
   });
 });
 
+describe("renderMarkdown feed html", () => {
+  it("is the sanitized post without what the site adds to it: highlighting, heading links and copy boxes", async () => {
+    const { feedHtml } = await renderMarkdown(
+      [
+        "## Title",
+        "",
+        '<img src="x" onerror="alert(1)">',
+        "",
+        "```python",
+        'print("<hi>")',
+        "```",
+        "",
+        '<iframe src="https://evil.example"></iframe>',
+      ].join("\n"),
+    );
+    const doc = new DOMParser().parseFromString(feedHtml, "text/html");
+
+    expect(doc.querySelector("h2")?.textContent).toBe("Title");
+    expect(doc.querySelector("h2 a")).toBeNull();
+    expect(doc.querySelector("pre > code")?.textContent).toBe(
+      'print("<hi>")\n',
+    );
+    expect(doc.querySelector("[style]")).toBeNull();
+    expect(doc.querySelector(".code-block")).toBeNull();
+    expect(doc.querySelector("img")?.hasAttribute("onerror")).toBe(false);
+    expect(doc.querySelector("iframe")).toBeNull();
+  });
+
+  it("points in-page links at the post's address, since a feed reader shows the post away from its page", async () => {
+    const markdown = [
+      "## Title",
+      "",
+      '[jump](#title) and `href="#main"`',
+      "",
+      "```html",
+      '<a href="#main">skip</a>',
+      "```",
+    ].join("\n");
+    const postUrl = "https://zeikar.dev/leetcode/posts/7/";
+    const { feedHtml, html } = await renderMarkdown(markdown, { postUrl });
+    const feed = new DOMParser().parseFromString(feedHtml, "text/html");
+    const page = new DOMParser().parseFromString(html, "text/html");
+
+    expect(feed.querySelector("p a")?.getAttribute("href")).toBe(
+      `${postUrl}#user-content-title`,
+    );
+    // only links change, not text that happens to look like one
+    expect(feed.querySelector("p code")?.textContent).toBe('href="#main"');
+    expect(feed.querySelector("pre code")?.textContent).toBe(
+      '<a href="#main">skip</a>\n',
+    );
+    expect(page.querySelector("p a")?.getAttribute("href")).toBe(
+      "#user-content-title",
+    );
+  });
+});
+
 describe("renderMarkdown search text", () => {
   it("keeps headings and code, and leaves out bare addresses and the footnotes heading", async () => {
     const { searchText } = await renderMarkdown(

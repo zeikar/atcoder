@@ -27,6 +27,9 @@ type PostMeta = {
 declare module "vfile" {
   interface DataMap {
     postMeta: PostMeta;
+    feedHtml: string;
+    // the post's absolute address, for the links in feedHtml
+    postUrl: string;
   }
 }
 
@@ -36,6 +39,8 @@ export type RenderedMarkdown = {
   excerpt: string;
   thumbnail: string | null;
   searchText: string;
+  // the post for feeds (see rehypeCaptureFeedHtml)
+  feedHtml: string;
 };
 
 const EXCERPT_LENGTH = 200;
@@ -275,6 +280,30 @@ const rehypeLowercaseLanguage: Plugin<[], Root> = () => (tree) => {
   });
 };
 
+const feedStringifier = unified().use(rehypeStringify);
+
+// the post as a feed carries it: sanitized, and without what the rest of the pipeline adds for the site's own page, such
+// as heading links and highlighted code, whose inline styles make up three quarters of a post's HTML and which a feed
+// reader mostly drops. A reader shows the post away from its page, so in-page links (#user-content-…) get the post's
+// address; they change on a copy, since the page keeps them as they are
+const rehypeCaptureFeedHtml: Plugin<[], Root> = () => (tree, file) => {
+  const feed = structuredClone(tree);
+  const { postUrl } = file.data;
+  if (postUrl !== undefined) {
+    visit(feed, "element", (node) => {
+      const { href } = node.properties;
+      if (
+        node.tagName === "a" &&
+        typeof href === "string" &&
+        href.startsWith("#")
+      ) {
+        node.properties.href = postUrl + href;
+      }
+    });
+  }
+  file.data.feedHtml = feedStringifier.stringify(feed);
+};
+
 const processor = unified()
   .use(remarkParse)
   .use(remarkGfm)
@@ -288,6 +317,7 @@ const processor = unified()
   .use(rehypeYoutubeOnly)
   .use(rehypePrefixFragmentLinks)
   .use(rehypeCollectPostMeta)
+  .use(rehypeCaptureFeedHtml)
   .use(rehypeLazyImages)
   .use(rehypeHeadingLinks)
   .use(rehypeExternalLinks, {
@@ -308,8 +338,9 @@ const processor = unified()
 
 export const renderMarkdown = async (
   markdown: string,
+  { postUrl }: { postUrl?: string } = {},
 ): Promise<RenderedMarkdown> => {
-  const file = await processor.process(markdown);
+  const file = await processor.process({ value: markdown, data: { postUrl } });
   // rehypeCollectPostMeta runs on every file
   const { headings, thumbnail, text, searchText } = file.data.postMeta!;
   // cut by code point so an emoji at the boundary is not left as a lone surrogate
@@ -324,5 +355,7 @@ export const renderMarkdown = async (
         : text,
     thumbnail,
     searchText,
+    // rehypeCaptureFeedHtml runs on every file too
+    feedHtml: file.data.feedHtml!,
   };
 };

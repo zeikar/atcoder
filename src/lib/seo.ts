@@ -24,7 +24,7 @@ export const siteDescription = ({
   profile: { bio: string | null };
 }): string | null => description ?? (profile.bio?.trim() || null);
 
-// XML 1.0 has no escape for most control characters, so text that may hold them (post titles and excerpts) has to drop them
+// XML 1.0 has no escape for most control characters, so text that may hold them (post titles, excerpts and HTML) has to drop them
 export const xmlSafe = (text: string): string =>
   text.replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\uFFFE\uFFFF]/g, "");
 
