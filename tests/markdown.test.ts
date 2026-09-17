@@ -173,9 +173,28 @@ describe("renderMarkdown html", () => {
       expect(pre.parentElement?.className).toBe("code-block");
       expect(pre.parentElement?.children).toHaveLength(1);
     }
-    // Shiki's tabindex, which lets a keyboard scroll a long line
-    expect(blocks[0].getAttribute("tabindex")).toBe("0");
     expect(doc.querySelectorAll(".code-block .code-block")).toHaveLength(0);
+  });
+
+  it("lets a keyboard scroll every code block, highlighted or not", async () => {
+    const { html } = await renderMarkdown(
+      '```js\nconst a = 1;\n```\n\n```\nno language\n```\n\n<pre>written in the post</pre>\n\n<pre tabindex="-1">its own tabindex</pre>',
+    );
+    const blocks = Array.from(
+      new DOMParser()
+        .parseFromString(html, "text/html")
+        .querySelectorAll("pre"),
+    );
+
+    // Shiki gives a highlighted block tabindex, and Safari only lets a keyboard scroll a focusable block
+    expect(blocks.map((pre) => pre.getAttribute("tabindex"))).toEqual([
+      "0",
+      "0",
+      "0",
+      "-1",
+    ]);
+    // counted in the HTML itself, since parsing it would fold a repeated attribute into one
+    expect(html.match(/tabindex=/g)).toHaveLength(4);
   });
 
   it("gives no box to a code block in a link the post wrote around it, where a copy button would follow the link", async () => {

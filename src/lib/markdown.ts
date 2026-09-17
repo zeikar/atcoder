@@ -279,6 +279,14 @@ const rehypeWrapCodeBlocks: Plugin<[], Root> = () => (tree) => {
     if (node.tagName !== "pre" || !parent || index === undefined) {
       return;
     }
+    // Shiki gives a highlighted block the tabindex that lets a keyboard scroll a long line (Safari scrolls only a
+    // focusable block); a fence without a language and a <pre> written in the post get it here
+    if (
+      node.properties.tabindex === undefined &&
+      node.properties.tabIndex === undefined
+    ) {
+      node.properties.tabIndex = 0;
+    }
     parent.children[index] = {
       type: "element",
       tagName: "div",
