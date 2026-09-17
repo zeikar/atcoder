@@ -104,16 +104,23 @@ describe("renderMarkdown html", () => {
     }
   });
 
-  it("keeps YouTube embeds, which existing posts use", async () => {
+  it("keeps YouTube embeds, which existing posts use, on YouTube's no-cookie host", async () => {
     const doc = await render(
-      '<iframe width="560" height="315" src="https://www.youtube.com/embed/GTJr8OvyEVQ" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; encrypted-media" allowfullscreen></iframe>',
+      [
+        '<iframe width="560" height="315" src="https://www.youtube.com/embed/GTJr8OvyEVQ?start=30" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; encrypted-media" allowfullscreen></iframe>',
+        '<iframe src="https://www.youtube-nocookie.com/embed/UTCScjoPymA"></iframe>',
+      ].join("\n\n"),
     );
-    const frame = doc.querySelector("iframe");
+    const [frame, nocookie] = Array.from(doc.querySelectorAll("iframe"));
 
-    expect(frame?.getAttribute("src")).toBe(
-      "https://www.youtube.com/embed/GTJr8OvyEVQ",
+    // the youtube.com player loads ad trackers and sets cookies as the page opens, before anyone plays it
+    expect(frame.getAttribute("src")).toBe(
+      "https://www.youtube-nocookie.com/embed/GTJr8OvyEVQ?start=30",
     );
-    expect(frame?.hasAttribute("allowfullscreen")).toBe(true);
+    expect(frame.hasAttribute("allowfullscreen")).toBe(true);
+    expect(nocookie.getAttribute("src")).toBe(
+      "https://www.youtube-nocookie.com/embed/UTCScjoPymA",
+    );
   });
 
   it("gives an embed with a width and height their shape, so it can shrink to a narrow column without distorting", async () => {
@@ -166,9 +173,28 @@ describe("renderMarkdown html", () => {
       expect(pre.parentElement?.className).toBe("code-block");
       expect(pre.parentElement?.children).toHaveLength(1);
     }
-    // Shiki's tabindex, which lets a keyboard scroll a long line
-    expect(blocks[0].getAttribute("tabindex")).toBe("0");
     expect(doc.querySelectorAll(".code-block .code-block")).toHaveLength(0);
+  });
+
+  it("lets a keyboard scroll every code block, highlighted or not", async () => {
+    const { html } = await renderMarkdown(
+      '```js\nconst a = 1;\n```\n\n```\nno language\n```\n\n<pre>written in the post</pre>\n\n<pre tabindex="-1">its own tabindex</pre>',
+    );
+    const blocks = Array.from(
+      new DOMParser()
+        .parseFromString(html, "text/html")
+        .querySelectorAll("pre"),
+    );
+
+    // Shiki gives a highlighted block tabindex, and Safari only lets a keyboard scroll a focusable block
+    expect(blocks.map((pre) => pre.getAttribute("tabindex"))).toEqual([
+      "0",
+      "0",
+      "0",
+      "-1",
+    ]);
+    // counted in the HTML itself, since parsing it would fold a repeated attribute into one
+    expect(html.match(/tabindex=/g)).toHaveLength(4);
   });
 
   it("gives no box to a code block in a link the post wrote around it, where a copy button would follow the link", async () => {

@@ -27,7 +27,10 @@ Repozine turns a GitHub repository's Issues or Discussions into a static blog, b
 [Use this template](https://github.com/zeikar/repozine/generate) to create a repository from this template.
 [docs](https://docs.github.com/en/repositories/creating-and-managing-repositories/creating-a-repository-from-a-template#creating-a-repository-from-a-template)
 
-Before pushing to it, set the Pages source to **GitHub Actions** in the new repository's Settings → Pages. [docs](https://docs.github.com/en/pages/getting-started-with-github-pages/configuring-a-publishing-source-for-your-github-pages-site)
+Before pushing to it, in the new repository's Settings:
+
+1. **Pages:** set the source to **GitHub Actions**. [docs](https://docs.github.com/en/pages/getting-started-with-github-pages/configuring-a-publishing-source-for-your-github-pages-site)
+2. **General → Features:** turn on **Discussions**, since `config.json` publishes from them. Then, in the Discussions tab, create an Announcement-format category named **Posts**, whose slug `posts` is the `discussionCategory`, and install the [giscus GitHub App](https://github.com/apps/giscus) for comments. To publish issues instead, set `source` to `"issues"` and skip this step; see [Comments](#comments).
 
 ```bash
 vi config.json
@@ -75,6 +78,8 @@ on:
     types: [created, edited, deleted, transferred, category_changed, labeled, unlabeled]
   discussion_comment:
     types: [created, deleted]
+  label:
+    types: [edited, deleted]
   workflow_dispatch:
 
 jobs:
@@ -101,6 +106,8 @@ git checkout HEAD -- config.json
 git commit -m "Update Repozine"
 git push origin HEAD
 ```
+
+The merge doesn't touch the rebuild workflow on your default branch, if you added one. Compare it with the one [above](#add-repozine-to-an-existing-repository), which may have gained events, such as `label`.
 
 A repository made from the template shares no history with Repozine until its first update. For that one, in place of the merge line, run these two, which replace your files with Repozine's. Commit or stash your changes first: unlike a merge, they overwrite uncommitted work without asking.
 

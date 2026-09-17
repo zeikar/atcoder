@@ -3,6 +3,7 @@ import {
   fetchDiscussionCategory,
   fetchDiscussions,
   fetchIssues,
+  fetchProfile,
   fetchRepositoryDescription,
   githubGraphql,
   type PostNode,
@@ -217,9 +218,18 @@ describe("fetchIssues", () => {
 });
 
 describe("fetchDiscussionCategory", () => {
-  const categories = (nodes: { id: string; name: string; slug: string }[]) =>
+  const categories = (
+    nodes: { id: string; name: string; slug: string }[],
+    hasDiscussionsEnabled = true,
+  ) =>
     json({
-      data: { repository: { id: "R_1", discussionCategories: { nodes } } },
+      data: {
+        repository: {
+          id: "R_1",
+          hasDiscussionsEnabled,
+          discussionCategories: { nodes },
+        },
+      },
     });
 
   it("finds the category by its slug", async () => {
@@ -254,6 +264,58 @@ describe("fetchDiscussionCategory", () => {
     await expect(
       fetchDiscussionCategory("zeikar", "repozine", "posts"),
     ).rejects.toThrow(/available slugs: none/);
+  });
+
+  // a repository made from the template starts with Discussions off, while config.json publishes from them
+  it("says where to turn Discussions on when they are off", async () => {
+    fetchMock.mockResolvedValue(categories([], false));
+
+    await expect(
+      fetchDiscussionCategory("someone", "blog", "posts"),
+    ).rejects.toThrow(
+      /Discussions are turned off in someone\/blog.*Settings.*"source": "issues"/,
+    );
+  });
+});
+
+describe("fetchProfile", () => {
+  const owner = (repositoryOwner: unknown) =>
+    json({ data: { repositoryOwner } });
+  const user = {
+    __typename: "User",
+    login: "zeikar",
+    name: "Zeikar",
+    bio: null,
+    avatarUrl: "https://avatars.githubusercontent.com/u/1",
+    url: "https://github.com/zeikar",
+    followers: { totalCount: 1 },
+    following: { totalCount: 2 },
+  };
+
+  it("returns the owner's profile", async () => {
+    fetchMock.mockResolvedValue(owner(user));
+
+    const { __typename: _, ...profile } = user;
+    await expect(fetchProfile("zeikar")).resolves.toEqual(profile);
+  });
+
+  // only posts written by repoOwner are published, and an organization writes none
+  it("says repoOwner must be a user account when it names an organization", async () => {
+    fetchMock.mockResolvedValue(
+      owner({ __typename: "Organization", login: "withastro" }),
+    );
+
+    await expect(fetchProfile("withastro")).rejects.toThrow(
+      /"repoOwner" "withastro" is an organization.*repository has to belong to a user account/,
+    );
+  });
+
+  it("names the account that doesn't exist", async () => {
+    fetchMock.mockResolvedValue(owner(null));
+
+    await expect(fetchProfile("nobody-here")).rejects.toThrow(
+      /no GitHub account named "nobody-here"/,
+    );
   });
 });
 

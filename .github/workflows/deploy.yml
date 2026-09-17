@@ -15,6 +15,9 @@ on:
     types: [created, edited, deleted, transferred, category_changed, labeled, unlabeled]
   discussion_comment:
     types: [created, deleted]
+  # a renamed label moves its tag page, and a recolored or deleted one changes every post it's on
+  label:
+    types: [edited, deleted]
   workflow_dispatch:
   # issue and discussion events only run workflows from the default branch, so a repo that keeps Repozine on its
   # repozine branch calls this file there from a short workflow on its default branch (see the README)
@@ -27,10 +30,10 @@ concurrency:
 jobs:
   build:
     # only the repo owner's issues/discussions render as posts, so events on
-    # anyone else's issue or discussion (including PR comments) are a no-op
+    # anyone else's issue or discussion (including PR comments) are a no-op;
+    # editing or deleting a label already takes write access
     if: >-
-      github.event_name == 'push' ||
-      github.event_name == 'workflow_dispatch' ||
+      contains(fromJSON('["push","workflow_dispatch","label"]'), github.event_name) ||
       (contains(fromJSON('["issues","issue_comment"]'), github.event_name) &&
       !github.event.issue.pull_request &&
       github.event.issue.user.login == github.repository_owner) ||
@@ -62,6 +65,11 @@ jobs:
         run: npm ci
       - name: Test
         run: npm test
+      # type-checks the site before it deploys; it syncs the content collections first, so it fetches the posts too
+      - name: Check
+        run: npm run check
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       # the site's real address, custom domain included: its origin for absolute URLs and its path as the base
       - id: pages
         uses: actions/configure-pages@v6

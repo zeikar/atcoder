@@ -79,6 +79,12 @@ const rehypeYoutubeOnly: Plugin<[], Root> = () => (tree) => {
     }
     // a named frame could be navigated to another origin by a link or form with target="<name>"
     delete node.properties.name;
+    // the youtube.com player loads ad trackers and sets cookies as the page opens, before anyone plays the video;
+    // youtube-nocookie.com does neither, then or while playing
+    node.properties.src = src.replace(
+      /^https:\/\/www\.youtube\.com\//,
+      "https://www.youtube-nocookie.com/",
+    );
   });
 };
 
@@ -272,6 +278,14 @@ const rehypeWrapCodeBlocks: Plugin<[], Root> = () => (tree) => {
     }
     if (node.tagName !== "pre" || !parent || index === undefined) {
       return;
+    }
+    // Shiki gives a highlighted block the tabindex that lets a keyboard scroll a long line (Safari scrolls only a
+    // focusable block); a fence without a language and a <pre> written in the post get it here
+    if (
+      node.properties.tabindex === undefined &&
+      node.properties.tabIndex === undefined
+    ) {
+      node.properties.tabIndex = 0;
     }
     parent.children[index] = {
       type: "element",

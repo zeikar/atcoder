@@ -21,8 +21,8 @@ concurrency:
 
 jobs:
   update:
-    # a push brings the new commits; issue and discussion events only rebuild main. Deploy keeps one run waiting, so
-    # a push whose Deploy is replaced by an issue or discussion event is synced by the next push or a manual run
+    # a push brings the new commits; issue, discussion and label events only rebuild main. Deploy keeps one run waiting,
+    # so a push whose Deploy is replaced by one of those events is synced by the next push or a manual run
     if: >-
       github.repository == 'zeikar/repozine' &&
       ((github.event_name == 'workflow_run' &&
