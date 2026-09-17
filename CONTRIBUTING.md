@@ -19,7 +19,7 @@ Node 22.22.2+, 24.15+ or 26+ is required (Astro needs 22.12+; the stricter requi
 Posts are fetched from the GitHub GraphQL API at build time, so `dev`, `build` and `check` all need a `GITHUB_TOKEN` (e.g. `GITHUB_TOKEN=$(gh auth token)`).
 
 - `npm run dev` - start the dev server
-- `npm run build` - build the static site and generate the Pagefind search index
+- `npm run build` - build the static site
 - `npm run preview` - preview the built site
 - `npm run check` - run `astro check`
 - `npm test` - run the Vitest suite

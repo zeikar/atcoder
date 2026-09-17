@@ -75,13 +75,7 @@ const image = shareableImage(data.thumbnail);
     <span>#{data.number}</span>
   </nav>
   <header class="mt-2 flex flex-wrap items-baseline gap-x-3 border-b border-rule pb-6 break-keep break-words">
-    {/* Pagefind 1.5.2 also indexes this title metadata, so title-only searches still match even
-    though the h1 sits outside data-pagefind-body; adding that attribute here would pull the title
-    into excerpts below. The number stays outside the h1 so it doesn't become part of that title */}
-    <h1
-      class="min-w-0 text-3xl font-bold tracking-tight sm:text-4xl"
-      data-pagefind-meta="title"
-    >
+    <h1 class="min-w-0 text-3xl font-bold tracking-tight sm:text-4xl">
       {data.title}
     </h1>
     <span class="text-3xl text-faint tabular-nums sm:text-4xl">
@@ -89,10 +83,7 @@ const image = shareableImage(data.thumbnail);
     </span>
   </header>
   <div class="mt-8 grid gap-8 lg:grid-cols-[minmax(0,1fr)_15.5rem] lg:gap-14">
-    <aside
-      class="text-sm lg:sticky lg:top-6 lg:order-last lg:flex lg:max-h-[calc(100vh-3rem)] lg:flex-col lg:self-start"
-      data-pagefind-ignore
-    >
+    <aside class="text-sm lg:sticky lg:top-6 lg:order-last lg:flex lg:max-h-[calc(100vh-3rem)] lg:flex-col lg:self-start">
       <dl class="grid grid-cols-[5rem_minmax(0,1fr)] gap-x-3 gap-y-2.5 border-b border-rule pb-5">
         {data.tags.length > 0 && (
           <>
@@ -137,11 +128,7 @@ const image = shareableImage(data.thumbnail);
       )}
     </aside>
     <div class="min-w-0">
-      {/* only post bodies go into the search index */}
-      <article
-        class="prose max-w-none break-keep break-words prose-code:before:content-none prose-code:after:content-none"
-        data-pagefind-body
-      >
+      <article class="prose max-w-none break-keep break-words prose-code:before:content-none prose-code:after:content-none">
         <Content />
       </article>
       <CopyCode />
@@ -177,7 +164,7 @@ const image = shareableImage(data.thumbnail);
           )}
         </nav>
       )}
-      <div class="mt-14 border-t border-rule pt-6" data-pagefind-ignore>
+      <div class="mt-14 border-t border-rule pt-6">
         <Comments number={data.number} />
       </div>
     </div>

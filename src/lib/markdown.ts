@@ -21,6 +21,7 @@ type PostMeta = {
   headings: Heading[];
   thumbnail: string | null;
   text: string;
+  searchText: string;
 };
 
 declare module "vfile" {
@@ -34,6 +35,7 @@ export type RenderedMarkdown = {
   toc: TocItem[];
   excerpt: string;
   thumbnail: string | null;
+  searchText: string;
 };
 
 const EXCERPT_LENGTH = 200;
@@ -96,21 +98,53 @@ const HEADING_TAG = /^h[1-6]$/;
 // autolinks and links written as their own address show the URL itself as their text
 const ADDRESS_TEXT = /^(?:[a-z][a-z\d+.-]*:\/\/|www\.)\S+$/i;
 
-// the text of a node, like hast-util-to-string, minus what doesn't read as prose in a one-line preview:
-// headings are the post's outline (the toc already shows them), and a code block or a bare address is noise
-const excerptText = (node: Nodes): string => {
-  if (
-    node.type === "element" &&
-    (HEADING_TAG.test(node.tagName) ||
-      node.tagName === "pre" ||
-      (node.tagName === "a" && ADDRESS_TEXT.test(toString(node).trim())))
-  ) {
-    return "";
-  }
-  if ("children" in node) {
-    return node.children.map(excerptText).join("");
-  }
-  return node.type === "text" ? node.value : "";
+// elements whose text doesn't run on into the text next to them, as two table cells or the lines around a <br> don't
+const SEPARATE_TEXT =
+  /^(?:blockquote|br|dd|details|div|dt|h[1-6]|hr|li|ol|p|pre|section|summary|table|td|th|tr|ul)$/;
+
+// the text of a node, like hast-util-to-string, minus the elements leftOut picks, with runs of whitespace collapsed
+const textWithout = (
+  node: Nodes,
+  leftOut: (element: Element) => boolean,
+): string => {
+  const text = (node: Nodes): string => {
+    if (node.type === "element" && leftOut(node)) {
+      return "";
+    }
+    if ("children" in node) {
+      const inner = node.children.map(text).join("");
+      return node.type === "element" && SEPARATE_TEXT.test(node.tagName)
+        ? ` ${inner} `
+        : inner;
+    }
+    return node.type === "text" ? node.value : "";
+  };
+  return text(node).replace(/\s+/g, " ").trim();
+};
+
+// a bare address would only make every post from one site match words such as https or com
+const isAddressLink = (element: Element): boolean =>
+  element.tagName === "a" && ADDRESS_TEXT.test(toString(element).trim());
+
+// what doesn't read as prose in a one-line preview: headings are the post's outline (the toc already shows them), and
+// a code block or a bare address is noise
+const leftOutOfExcerpt = (element: Element): boolean =>
+  HEADING_TAG.test(element.tagName) ||
+  element.tagName === "pre" ||
+  isAddressLink(element);
+
+// search reads headings, code and footnotes too, so a post is found by a section's name or a function it calls; left
+// out are the footnote markers and back-links, whose numbers and arrows aren't words, and the footnotes section's
+// visually hidden heading
+const leftOutOfSearch = (element: Element): boolean => {
+  const { className, dataFootnoteRef, dataFootnoteBackref } =
+    element.properties;
+  return (
+    isAddressLink(element) ||
+    dataFootnoteRef !== undefined ||
+    dataFootnoteBackref !== undefined ||
+    (Array.isArray(className) && className.includes("sr-only"))
+  );
 };
 
 const rehypeCollectPostMeta: Plugin<[], Root> = () => (tree, file) => {
@@ -152,7 +186,8 @@ const rehypeCollectPostMeta: Plugin<[], Root> = () => (tree, file) => {
   file.data.postMeta = {
     headings,
     thumbnail,
-    text: excerptText(body).replace(/\s+/g, " ").trim(),
+    text: textWithout(body, leftOutOfExcerpt),
+    searchText: textWithout(tree, leftOutOfSearch),
   };
 };
 
@@ -272,7 +307,7 @@ export const renderMarkdown = async (
 ): Promise<RenderedMarkdown> => {
   const file = await processor.process(markdown);
   // rehypeCollectPostMeta runs on every file
-  const { headings, thumbnail, text } = file.data.postMeta!;
+  const { headings, thumbnail, text, searchText } = file.data.postMeta!;
   // cut by code point so an emoji at the boundary is not left as a lone surrogate
   const characters = Array.from(text);
 
@@ -284,5 +319,6 @@ export const renderMarkdown = async (
         ? characters.slice(0, EXCERPT_LENGTH).join("") + "…"
         : text,
     thumbnail,
+    searchText,
   };
 };
