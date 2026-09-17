@@ -78,6 +78,8 @@ on:
     types: [created, edited, deleted, transferred, category_changed, labeled, unlabeled]
   discussion_comment:
     types: [created, deleted]
+  label:
+    types: [edited, deleted]
   workflow_dispatch:
 
 jobs:
@@ -104,6 +106,8 @@ git checkout HEAD -- config.json
 git commit -m "Update Repozine"
 git push origin HEAD
 ```
+
+The merge doesn't touch the rebuild workflow on your default branch, if you added one. Compare it with the one [above](#add-repozine-to-an-existing-repository), which may have gained events, such as `label`.
 
 A repository made from the template shares no history with Repozine until its first update. For that one, in place of the merge line, run these two, which replace your files with Repozine's. Commit or stash your changes first: unlike a merge, they overwrite uncommitted work without asking.
 
