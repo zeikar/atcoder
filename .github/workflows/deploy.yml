@@ -9,6 +9,8 @@ on:
     types: [created, edited, deleted, transferred, category_changed, labeled, unlabeled]
   discussion_comment:
     types: [created, deleted]
+  label:
+    types: [edited, deleted]
   workflow_dispatch:
 
 jobs:
