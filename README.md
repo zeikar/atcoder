@@ -16,9 +16,13 @@
 
 Repozine turns a GitHub repository's Issues or Discussions into a static blog, built with Astro and deployed automatically to GitHub Pages.
 
-# Live Demo
+[Gmeek](https://github.com/Meekdai/Gmeek) and [gitblog](https://github.com/yihong0618/gitblog) publish a blog from Issues, and [Hakuba](https://github.com/YeungKC/Hakuba) from Discussions. Repozine publishes from either, and it can live on its own branch of a repository that already holds your code, so the posts sit next to the work they describe.
 
-[https://zeikar.dev/repozine/](https://zeikar.dev/repozine/)
+# Sites using Repozine
+
+- [zeikar.dev/leetcode](https://zeikar.dev/leetcode/): 160+ LeetCode solution notes written since 2021, published from the Discussions of [zeikar/leetcode](https://github.com/zeikar/leetcode), the repository that holds the solutions
+- [zeikar.dev/atcoder](https://zeikar.dev/atcoder/): 30+ AtCoder solution notes from [zeikar/atcoder](https://github.com/zeikar/atcoder), set up the same way
+- [zeikar.dev/repozine](https://zeikar.dev/repozine/): the demo, with one post
 
 # How to use
 
@@ -164,11 +168,6 @@ GITHUB_TOKEN=$(gh auth token) npm run dev
 - Without JavaScript, dates are shown in UTC; otherwise they are shown in the reader's time zone.
 - Discussion comment counts include top-level comments only.
 - The search page downloads the text of every post, which grows with the number of posts: about 70KB compressed for 160 posts.
-
-# Sites using Repozine
-
-- [https://zeikar.dev/leetcode/](https://zeikar.dev/leetcode/)
-- [and many more...](https://github.com/topics/repozine)
 
 # License
 
