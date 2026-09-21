@@ -14,7 +14,7 @@
 
 ---
 
-Repozine turns a GitHub repository's Issues or Discussions into a static blog, built with Astro and deployed automatically to GitHub Pages.
+Repozine turns a GitHub repository's Issues or Discussions into a static blog or study log, built with Astro and deployed automatically to GitHub Pages.
 
 [Gmeek](https://github.com/Meekdai/Gmeek) and [gitblog](https://github.com/yihong0618/gitblog) publish a blog from Issues, and [Hakuba](https://github.com/YeungKC/Hakuba) from Discussions. Repozine publishes from either, and it can live on its own branch of a repository that already holds your code, so the posts sit next to the work they describe.
 
