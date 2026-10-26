@@ -3,6 +3,7 @@ import {
   fetchDiscussionCategory,
   fetchDiscussions,
   fetchIssues,
+  fetchPinnedNumbers,
   fetchProfile,
   fetchRepositoryDescription,
   githubGraphql,
@@ -333,6 +334,29 @@ describe("fetchDiscussions", () => {
       categoryId: "DIC_2",
       cursor: "cursor-1",
     });
+  });
+});
+
+describe("fetchPinnedNumbers", () => {
+  it.each([
+    ["issues", "pinnedIssues"],
+    ["discussions", "pinnedDiscussions"],
+  ] as const)("reads the pinned %s", async (source, connection) => {
+    fetchMock.mockResolvedValue(
+      json({
+        data: {
+          repository: {
+            pins: { nodes: [{ post: { number: 3 } }, { post: { number: 9 } }] },
+          },
+        },
+      }),
+    );
+
+    const pinned = await fetchPinnedNumbers("zeikar", "repozine", source);
+
+    expect([...pinned]).toEqual([3, 9]);
+    expect(JSON.parse(String(initOf(0)?.body)).query).toContain(connection);
+    expect(variablesOf(0)).toEqual({ owner: "zeikar", repo: "repozine" });
   });
 });
 

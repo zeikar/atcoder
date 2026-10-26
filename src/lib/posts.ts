@@ -66,3 +66,9 @@ export const byNewest = (
   a: Pick<Post, "createdAt">,
   b: Pick<Post, "createdAt">,
 ): number => Date.parse(b.createdAt) - Date.parse(a.createdAt);
+
+// the home page lists pinned posts first; every other list stays in date order
+export const byPinnedThenNewest = (
+  a: { pinned: boolean; createdAt: string },
+  b: { pinned: boolean; createdAt: string },
+): number => Number(b.pinned) - Number(a.pinned) || byNewest(a, b);

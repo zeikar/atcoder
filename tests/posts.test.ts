@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { PostNode } from "../src/lib/github";
 import {
   byNewest,
+  byPinnedThenNewest,
   isTrustedPost,
   toPost,
   type TrustedPostNode,
@@ -145,6 +146,27 @@ describe("byNewest", () => {
       "2023-01-01T00:00:00Z",
       "2022-06-30T12:00:00Z",
       "2021-02-18T14:50:29Z",
+    ]);
+  });
+});
+
+describe("byPinnedThenNewest", () => {
+  it("puts pinned posts first, each group newest first", () => {
+    const posts = [
+      { pinned: false, createdAt: "2023-01-01T00:00:00Z" },
+      { pinned: true, createdAt: "2021-02-18T14:50:29Z" },
+      { pinned: false, createdAt: "2024-03-01T00:00:00Z" },
+      { pinned: true, createdAt: "2022-06-30T12:00:00Z" },
+    ];
+    expect(
+      posts
+        .sort(byPinnedThenNewest)
+        .map(({ pinned, createdAt }) => `${pinned} ${createdAt}`),
+    ).toEqual([
+      "true 2022-06-30T12:00:00Z",
+      "true 2021-02-18T14:50:29Z",
+      "false 2024-03-01T00:00:00Z",
+      "false 2023-01-01T00:00:00Z",
     ]);
   });
 });

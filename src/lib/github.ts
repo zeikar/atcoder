@@ -223,6 +223,29 @@ export const fetchDiscussions = (
     { categoryId },
   );
 
+// the posts pinned to the top of the repository's issue or discussion list. GitHub allows only a few pins, so one page
+// holds them all. Discussions pinned to a category alone aren't in the API, and a pin is only a number here: the
+// posts themselves still have to pass isTrustedPost
+export const fetchPinnedNumbers = async (
+  owner: string,
+  repo: string,
+  source: "issues" | "discussions",
+): Promise<Set<number>> => {
+  const pins =
+    source === "issues"
+      ? "pinnedIssues(first: 100) { nodes { post: issue { number } } }"
+      : "pinnedDiscussions(first: 100) { nodes { post: discussion { number } } }";
+  const { repository } = await githubGraphql<{
+    repository: { pins: { nodes: { post: { number: number } }[] } };
+  }>(
+    `query ($owner: String!, $repo: String!) {
+      repository(owner: $owner, name: $repo) { pins: ${pins} }
+    }`,
+    { owner, repo },
+  );
+  return new Set(repository.pins.nodes.map(({ post }) => post.number));
+};
+
 // the repository's About text, which describes the site when there is one
 export const fetchRepositoryDescription = async (
   owner: string,

@@ -7,9 +7,10 @@ import TagList from "./TagList.astro";
 
 interface Props {
   post: CollectionEntry<"posts">["data"];
+  pinned?: boolean;
 }
 
-const { post } = Astro.props;
+const { post, pinned = false } = Astro.props;
 const [firstTag] = post.tags;
 ---
 
@@ -28,6 +29,26 @@ const [firstTag] = post.tags;
   <div class="flex min-w-0 gap-4">
     <div class="min-w-0 flex-1 break-keep break-words">
       <h2 class="text-[1.0625rem] leading-7 font-semibold">
+        {pinned && (
+          <span class="mr-2 inline-flex items-center gap-1 rounded-full bg-marker-fill px-2 align-[0.125em] text-xs leading-5 font-semibold whitespace-nowrap text-on-marker-fill selection:bg-fg selection:text-page">
+            {/* Lucide's pin icon */}
+            <svg
+              width="12"
+              height="12"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.5"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M12 17v5" />
+              <path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z" />
+            </svg>
+            Pinned
+          </span>
+        )}
         {/* the link covers the whole row; tags sit above it so they stay clickable */}
         <a
           href={withBase(import.meta.env.BASE_URL, postPath(post.number))}

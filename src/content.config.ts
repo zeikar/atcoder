@@ -5,6 +5,7 @@ import {
   fetchDiscussionCategory,
   fetchDiscussions,
   fetchIssues,
+  fetchPinnedNumbers,
   fetchProfile,
   fetchRepositoryDescription,
 } from "./lib/github";
@@ -51,7 +52,11 @@ const posts = defineCollection({
   loader: {
     name: "github-posts",
     load: async ({ store, logger, parseData }) => {
-      const trusted = (await fetchPostNodes())
+      const [nodes, pinned] = await Promise.all([
+        fetchPostNodes(),
+        fetchPinnedNumbers(repoOwner, repoName, source),
+      ]);
+      const trusted = nodes
         .filter((node) => isTrustedPost(node, siteConfig))
         .map(toPost);
 
@@ -77,6 +82,7 @@ const posts = defineCollection({
             updatedAt: post.updatedAt,
             url: post.url,
             commentCount: post.commentCount,
+            pinned: pinned.has(post.number),
             tags: post.tags.map((tag) => ({ ...tag, slug: tagSlug(tag.name) })),
             excerpt,
             thumbnail,
@@ -100,6 +106,8 @@ const posts = defineCollection({
     updatedAt: z.string(),
     url: z.string(),
     commentCount: z.number(),
+    // pinned to the top of the repository's issue or discussion list on GitHub
+    pinned: z.boolean(),
     tags: z.array(
       z.object({
         name: z.string(),
