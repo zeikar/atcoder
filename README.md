@@ -75,11 +75,11 @@ name: Deploy to GitHub Pages
 
 on:
   issues:
-    types: [opened, edited, deleted, closed, reopened, labeled, unlabeled, transferred]
+    types: [opened, edited, deleted, closed, reopened, labeled, unlabeled, transferred, pinned, unpinned]
   issue_comment:
     types: [created, deleted]
   discussion:
-    types: [created, edited, deleted, transferred, category_changed, labeled, unlabeled]
+    types: [created, edited, deleted, transferred, category_changed, labeled, unlabeled, pinned, unpinned]
   discussion_comment:
     types: [created, deleted]
   label:
@@ -111,7 +111,7 @@ git commit -m "Update Repozine"
 git push origin HEAD
 ```
 
-The merge doesn't touch the rebuild workflow on your default branch, if you added one. Compare it with the one [above](#add-repozine-to-an-existing-repository), which may have gained events, such as `label`.
+The merge doesn't touch the rebuild workflow on your default branch, if you added one. Compare it with the one [above](#add-repozine-to-an-existing-repository), which may have gained events, such as `label` or `pinned`.
 
 A repository made from the template shares no history with Repozine until its first update. For that one, in place of the merge line, run these two, which replace your files with Repozine's. Commit or stash your changes first: unlike a merge, they overwrite uncommitted work without asking.
 
@@ -127,6 +127,10 @@ If a build then stops on a `config.json` key, add it; see [Configuration](#confi
 ## Switch from issues to discussions
 
 GitHub has no API or bulk action for this, so convert each post with **Convert to discussion** on its issue page, into the category you publish. The discussion keeps the title, body, author, labels and date but gets a new number, so the post's URL changes; the issue is left closed and locked. Then set `source` to `"discussions"` and `discussionCategory` in `config.json`.
+
+## Pinned posts
+
+Pin one of your posts on GitHub (an issue or a discussion, whichever `source` publishes) to list it first on the home page; tag pages stay in date order. GitHub allows 3 pinned issues and 4 pinned discussions per repository. Only discussions pinned to the top of the Discussions page count, since pins to a single category aren't in GitHub's API.
 
 ## Configuration
 

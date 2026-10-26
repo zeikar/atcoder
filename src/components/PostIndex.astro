@@ -14,10 +14,20 @@ interface Props {
   // pagination links go under this path; "" is the home page
   prefix: string;
   currentSlug?: string;
+  // only a list sorted pinned first marks its pinned posts
+  markPinned?: boolean;
 }
 
-const { heading, total, posts, currentPage, lastPage, prefix, currentSlug } =
-  Astro.props;
+const {
+  heading,
+  total,
+  posts,
+  currentPage,
+  lastPage,
+  prefix,
+  currentSlug,
+  markPinned = false,
+} = Astro.props;
 ---
 
 <Profile />
@@ -32,7 +42,7 @@ const { heading, total, posts, currentPage, lastPage, prefix, currentSlug } =
     <ol class="mt-5 border-t border-rule">
       {posts.map((entry) => (
         <li>
-          <PostRow post={entry.data} />
+          <PostRow post={entry.data} pinned={markPinned && entry.data.pinned} />
         </li>
       ))}
     </ol>

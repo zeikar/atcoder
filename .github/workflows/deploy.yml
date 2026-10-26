@@ -6,13 +6,13 @@ on:
   push:
     branches: [main, repozine]
   issues:
-    types: [opened, edited, deleted, closed, reopened, labeled, unlabeled, transferred]
+    types: [opened, edited, deleted, closed, reopened, labeled, unlabeled, transferred, pinned, unpinned]
   # comment counts are rendered at build time, so new/removed comments must
   # trigger a rebuild; pull-request comments are filtered out in the job below
   issue_comment:
     types: [created, deleted]
   discussion:
-    types: [created, edited, deleted, transferred, category_changed, labeled, unlabeled]
+    types: [created, edited, deleted, transferred, category_changed, labeled, unlabeled, pinned, unpinned]
   discussion_comment:
     types: [created, deleted]
   # a renamed label moves its tag page, and a recolored or deleted one changes every post it's on

@@ -15,7 +15,8 @@ import { absoluteUrl, blogPostingJsonLd, shareableImage } from "../../lib/seo";
 import { getSite } from "../../lib/site";
 
 export const getStaticPaths = (async () => {
-  // in the index's order, so the newer and older posts are the ones listed next to this one
+  // in date order, as the tag pages list them, so the newer and older posts are the ones dated next to this one; the
+  // home page lifts pinned posts above that order
   const posts = (await getCollection("posts")).sort((a, b) =>
     byNewest(a.data, b.data),
   );
