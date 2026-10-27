@@ -43,17 +43,49 @@ describe("parseSiteConfig", () => {
       { ...issuesConfig, source: "discussions" },
       /"discussionCategory"/,
     ],
+    [
+      "discussions with an empty list of categories",
+      { ...issuesConfig, source: "discussions", discussionCategory: [] },
+      /"discussionCategory"/,
+    ],
+    [
+      "a blank slug in the list of categories",
+      {
+        ...issuesConfig,
+        source: "discussions",
+        discussionCategory: ["posts", ""],
+      },
+      /"discussionCategory"/,
+    ],
   ])("rejects %s", (_name, config, message) => {
     expect(() => parseSiteConfig(config)).toThrow(message);
   });
 
   it("accepts a discussions config with a category", () => {
-    const config = {
-      ...issuesConfig,
-      source: "discussions",
-      discussionCategory: "Blog",
-    };
-    expect(parseSiteConfig(config)).toEqual({ ...config, language: "en" });
+    const config = { ...issuesConfig, source: "discussions" };
+    expect(parseSiteConfig({ ...config, discussionCategory: "Blog" })).toEqual({
+      ...config,
+      discussionCategories: ["Blog"],
+      language: "en",
+    });
+  });
+
+  it("accepts a list of categories", () => {
+    expect(
+      parseSiteConfig({
+        ...issuesConfig,
+        source: "discussions",
+        discussionCategory: ["posts", "notes"],
+      }).discussionCategories,
+    ).toEqual(["posts", "notes"]);
+  });
+
+  // the template's config.json may still carry one
+  it("ignores the category in issues mode", () => {
+    expect(
+      parseSiteConfig({ ...issuesConfig, discussionCategory: "" })
+        .discussionCategories,
+    ).toEqual([]);
   });
 
   it("keeps a language tag with a region", () => {

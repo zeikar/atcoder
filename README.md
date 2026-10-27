@@ -26,48 +26,82 @@ Repozine turns a GitHub repository's Issues or Discussions into a static blog or
 
 # How to use
 
-## Use this template
+Setting up a site takes three steps: get Repozine into a repository, prepare the issues or discussions it publishes, then fill in `config.json` and push.
 
-[Use this template](https://github.com/zeikar/repozine/generate) to create a repository from this template.
-[docs](https://docs.github.com/en/repositories/creating-and-managing-repositories/creating-a-repository-from-a-template#creating-a-repository-from-a-template)
+## 1. Get the code
 
-Before pushing to it, in the new repository's Settings:
+Repozine can be a repository of its own, made from this template, or a `repozine` branch of a repository that already holds your code.
 
-1. **Pages:** set the source to **GitHub Actions**. [docs](https://docs.github.com/en/pages/getting-started-with-github-pages/configuring-a-publishing-source-for-your-github-pages-site)
-2. **General → Features:** turn on **Discussions**, since `config.json` publishes from them. Then, in the Discussions tab, create an Announcement-format category named **Posts**, whose slug `posts` is the `discussionCategory`, and install the [giscus GitHub App](https://github.com/apps/giscus) for comments. To publish issues instead, set `source` to `"issues"` and skip this step; see [Comments](#comments).
+### A new repository from the template
 
-```bash
-vi config.json
-```
+[Use this template](https://github.com/zeikar/repozine/generate) to create a repository. [docs](https://docs.github.com/en/repositories/creating-and-managing-repositories/creating-a-repository-from-a-template#creating-a-repository-from-a-template)
 
-Configure your `config.json` ([options](#configuration)) and commit it.
+In its Settings → **Pages**, set the source to **GitHub Actions**. [docs](https://docs.github.com/en/pages/getting-started-with-github-pages/configuring-a-publishing-source-for-your-github-pages-site)
 
-```bash
-git add config.json
-git commit -m "Configure Repozine"
-git push origin main
-```
+### A branch of an existing repository
 
-Pushing to `main` triggers the deploy workflow, which builds the site and publishes it to GitHub Pages.
-
-## Add Repozine to an existing repository
-
-Repozine lives on its own `repozine` branch. Before pushing it for the first time, in your repository's Settings:
+In the repository's Settings:
 
 1. **Pages:** set the source to **GitHub Actions**. [docs](https://docs.github.com/en/pages/getting-started-with-github-pages/configuring-a-publishing-source-for-your-github-pages-site)
 2. **Environments → github-pages:** add `repozine` to the deployment branches, since the switch above allows only the default branch.
 3. **Secrets and variables → Actions → Variables:** set `REPOZINE_REF` to `repozine`.
 
+Then create the branch from Repozine. Commit or stash your changes first: `-f` discards uncommitted work without asking.
+
 ```bash
 git remote add repozine https://github.com/zeikar/repozine
 git fetch repozine
 git checkout -f -b repozine repozine/main
-vi config.json   # see Configuration below
-git commit -am "Configure Repozine"
-git push origin repozine   # deploys the site
 ```
 
-To also rebuild when posts or comments change, add this workflow to your default branch as `.github/workflows/deploy.yml`, with `OWNER/REPO` replaced by your repository. Issue and discussion events only run workflows from the default branch. This one runs the deploy workflow from your `repozine` branch, so updating Repozine updates it too. That workflow still checks out the code to build from `REPOZINE_REF` (step 3); without it, it would build the default branch, which has no site in it.
+## 2. Choose where posts come from
+
+Posts are the open issues or discussions written by the repository's owner, and their labels become tags. Set `source` in `config.json` to one of the two.
+
+- **Issues:** every open issue you write is a post. For comments, install the [utterances GitHub App](https://github.com/apps/utterances) on the repository.
+- **Discussions:** only the categories you name are published.
+  1. In Settings → **General → Features**, turn on **Discussions**.
+  2. In the Discussions tab, create a category for posts, such as **Posts**. Choose the Announcement format, so only maintainers can start discussions in it. Its slug is the end of the category's URL, `posts` in `.../discussions/categories/posts`; that is the `discussionCategory`. You can publish from several categories.
+  3. For comments, install the [giscus GitHub App](https://github.com/apps/giscus) on the repository.
+
+Comments are bound to the post's number, so each post keeps the comments made on its issue or discussion.
+
+## 3. Configure and deploy
+
+Edit `config.json`:
+
+```json
+{
+  "websiteTitle": "My Blog",
+  "repoOwner": "your-username",
+  "repoName": "your-repo",
+  "source": "discussions",
+  "discussionCategory": "posts",
+  "googleAnalyticsId": "",
+  "language": "en"
+}
+```
+
+| Key                  | Description                                                                                                                                                                                                                                                                                                |
+| -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `websiteTitle`       | Title shown in the navbar, footer and browser tab                                                                                                                                                                                                                                                          |
+| `repoOwner`          | Owner of the repository. Only issues or discussions authored by this account are published, so the repository must be owned by a user, not an organization                                                                                                                                                 |
+| `repoName`           | Repository whose issues or discussions become posts. A build in GitHub Actions stops if `repoOwner`/`repoName` name a different repository from the one it runs in                                                                                                                                         |
+| `source`             | `"issues"` or `"discussions"`                                                                                                                                                                                                                                                                              |
+| `discussionCategory` | Discussion category **slug** to publish from, or a list of them such as `["posts", "notes"]`. Required when `source` is `"discussions"`. Use Announcement-format categories so only maintainers can create posts                                                                                           |
+| `googleAnalyticsId`  | Google Analytics measurement ID (e.g. `G-XXXXXXXXXX`). Leave empty to disable analytics                                                                                                                                                                                                                    |
+| `language`           | Language of the posts as a tag such as `"en"` or `"ko"`, used for `<html lang>`, dates and the giscus interface (English when giscus has no translation). Include a region (`"ko-KR"`) to also set `og:locale`. Korean (`"ko"`, `"ko-KR"`) also loads the Hangul faces of the web font. Defaults to `"en"` |
+
+Then commit it and push to the branch Repozine is on, which runs the deploy workflow: it builds the site and publishes it to GitHub Pages.
+
+```bash
+git commit -am "Configure Repozine"
+git push origin main   # git push origin repozine on a branch of an existing repository
+```
+
+### Rebuild when posts change
+
+A repository made from the template already rebuilds the site on issue, discussion, comment and label events (see [Known limitations](#known-limitations)). On a branch of an existing repository, issue and discussion events only run workflows from the default branch, so add this workflow to your default branch as `.github/workflows/deploy.yml`, with `OWNER/REPO` replaced by your repository. It runs the deploy workflow from your `repozine` branch, so updating Repozine updates it too. That workflow still checks out the code to build from `REPOZINE_REF` (step 1); without it, it would build the default branch, which has no site in it.
 
 <!-- prettier-ignore -->
 ```yaml
@@ -111,7 +145,7 @@ git commit -m "Update Repozine"
 git push origin HEAD
 ```
 
-The merge doesn't touch the rebuild workflow on your default branch, if you added one. Compare it with the one [above](#add-repozine-to-an-existing-repository), which may have gained events, such as `label` or `pinned`.
+The merge doesn't touch the rebuild workflow on your default branch, if you added one. Compare it with the one [above](#rebuild-when-posts-change), which may have gained events, such as `label` or `pinned`.
 
 A repository made from the template shares no history with Repozine until its first update. For that one, in place of the merge line, run these two, which replace your files with Repozine's. Commit or stash your changes first: unlike a merge, they overwrite uncommitted work without asking.
 
@@ -122,7 +156,7 @@ git read-tree -u --reset repozine/main
 
 Before committing, `git status` shows what they delete: files Repozine no longer has, and any you added yourself, which `git checkout HEAD -- <file>` keeps.
 
-If a build then stops on a `config.json` key, add it; see [Configuration](#configuration).
+If a build then stops on a `config.json` key, add it; see [Configure and deploy](#3-configure-and-deploy).
 
 ## Switch from issues to discussions
 
@@ -131,23 +165,6 @@ GitHub has no API or bulk action for this, so convert each post with **Convert t
 ## Pinned posts
 
 Pin one of your posts on GitHub (an issue or a discussion, whichever `source` publishes) to list it first on the home page; tag pages stay in date order. GitHub allows 3 pinned issues and 4 pinned discussions per repository. Only discussions pinned to the top of the Discussions page count, since pins to a single category aren't in GitHub's API.
-
-## Configuration
-
-| Key                  | Description                                                                                                                                                                                                                                                                                                |
-| -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `websiteTitle`       | Title shown in the navbar, footer and browser tab                                                                                                                                                                                                                                                          |
-| `repoOwner`          | Owner of the repository. Only issues or discussions authored by this account are published, so the repository must be owned by a user, not an organization                                                                                                                                                 |
-| `repoName`           | Repository whose issues or discussions become posts. A build in GitHub Actions stops if `repoOwner`/`repoName` name a different repository from the one it runs in                                                                                                                                         |
-| `source`             | `"issues"` or `"discussions"`                                                                                                                                                                                                                                                                              |
-| `discussionCategory` | Discussion category **slug** to publish from. Required when `source` is `"discussions"`. Use an Announcement-format category so only maintainers can create posts                                                                                                                                          |
-| `googleAnalyticsId`  | Google Analytics measurement ID (e.g. `G-XXXXXXXXXX`). Leave empty to disable analytics                                                                                                                                                                                                                    |
-| `language`           | Language of the posts as a tag such as `"en"` or `"ko"`, used for `<html lang>`, dates and the giscus interface (English when giscus has no translation). Include a region (`"ko-KR"`) to also set `og:locale`. Korean (`"ko"`, `"ko-KR"`) also loads the Hangul faces of the web font. Defaults to `"en"` |
-
-## Comments
-
-- `source: "issues"` uses [utterances](https://utteranc.es/), bound to the issue number. Install the [utterances GitHub App](https://github.com/apps/utterances) on the repository.
-- `source: "discussions"` uses [giscus](https://giscus.app/), bound to the discussion number. Install the [giscus GitHub App](https://github.com/apps/giscus) on the repository and enable Discussions.
 
 ## Search engines
 

@@ -11,15 +11,16 @@ import {
 const issuesConfig = {
   repoOwner: "zeikar",
   repoName: "repozine",
-  source: "issues",
-} as const;
+  source: "issues" as const,
+  discussionCategories: [],
+};
 
 const discussionsConfig = {
   repoOwner: "zeikar",
   repoName: "repozine",
-  source: "discussions",
-  discussionCategory: "general",
-} as const;
+  source: "discussions" as const,
+  discussionCategories: ["general", "notes"],
+};
 
 // the shapes GitHub GraphQL returns for the issue and discussion selections in src/lib/github.ts
 const issue = (overrides: Partial<TrustedPostNode> = {}): TrustedPostNode => ({
@@ -53,7 +54,7 @@ const discussion = (
   comments: { totalCount: 0 },
   lastEditedAt: null,
   closed: false,
-  category: { slug: "general" },
+  category: { id: "DIC_1", name: "General", slug: "general" },
   ...overrides,
 });
 
@@ -88,9 +89,19 @@ describe("isTrustedPost in discussions mode", () => {
     expect(isTrustedPost(discussion(), discussionsConfig)).toBe(true);
   });
 
+  it("trusts a discussion in any of the categories", () => {
+    const node = discussion({
+      category: { id: "DIC_2", name: "Notes", slug: "notes" },
+    });
+    expect(isTrustedPost(node, discussionsConfig)).toBe(true);
+  });
+
   it.each<[string, PostNode]>([
     ["a closed discussion", discussion({ closed: true })],
-    ["another category", discussion({ category: { slug: "ideas" } })],
+    [
+      "another category",
+      discussion({ category: { id: "DIC_3", name: "Ideas", slug: "ideas" } }),
+    ],
     ["a deleted (ghost) author", { ...discussion(), author: null }],
     ["an issue", issue()],
   ])("drops %s", (_name, node) => {
@@ -110,6 +121,7 @@ describe("toPost", () => {
       tags: [{ name: "C++", color: "f29513" }],
       commentCount: 2,
       updatedAt: "2021-02-18T14:50:29Z",
+      category: null,
     });
     expect(toPost(discussion())).toEqual({
       number: 27,
@@ -121,6 +133,7 @@ describe("toPost", () => {
       tags: [],
       commentCount: 0,
       updatedAt: "2021-02-18T14:50:29Z",
+      category: { id: "DIC_1", name: "General", slug: "general" },
     });
   });
 
