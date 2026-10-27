@@ -2,7 +2,7 @@ import { defineCollection } from "astro:content";
 import { z } from "astro/zod";
 import { siteConfig } from "./lib/config";
 import {
-  fetchDiscussionCategory,
+  fetchDiscussionCategories,
   fetchDiscussions,
   fetchIssues,
   fetchPinnedNumbers,
@@ -18,25 +18,28 @@ import type { TocItem } from "./lib/toc";
 
 const { repoOwner, repoName, source } = siteConfig;
 
-// both collections need the category in discussions mode, and Astro starts their loaders together, so they share one
+// both collections need the categories in discussions mode, and Astro starts their loaders together, so they share one
 // request; it is dropped once settled, so a dev server's later content sync sees a renamed or deleted category
-let categoryRequest: ReturnType<typeof fetchDiscussionCategory> | undefined;
-const discussionCategory = () =>
-  (categoryRequest ??= fetchDiscussionCategory(
+let categoriesRequest: ReturnType<typeof fetchDiscussionCategories> | undefined;
+const discussionCategories = () =>
+  (categoriesRequest ??= fetchDiscussionCategories(
     repoOwner,
     repoName,
-    // parseSiteConfig requires a category in discussions mode
-    siteConfig.discussionCategory!,
+    siteConfig.discussionCategories,
   ).finally(() => {
-    categoryRequest = undefined;
+    categoriesRequest = undefined;
   }));
 
 const fetchPostNodes = async () => {
   if (source === "issues") {
     return fetchIssues(repoOwner, repoName);
   }
-  const { category } = await discussionCategory();
-  return fetchDiscussions(repoOwner, repoName, category.id);
+  // the categoryId argument takes one category, so each is listed on its own
+  const { categoryIds } = await discussionCategories();
+  const lists = await Promise.all(
+    categoryIds.map((id) => fetchDiscussions(repoOwner, repoName, id)),
+  );
+  return lists.flat();
 };
 
 const tocItem: z.ZodType<TocItem> = z.lazy(() =>
@@ -83,6 +86,10 @@ const posts = defineCollection({
             url: post.url,
             commentCount: post.commentCount,
             pinned: pinned.has(post.number),
+            category: post.category && {
+              id: post.category.id,
+              name: post.category.name,
+            },
             tags: post.tags.map((tag) => ({ ...tag, slug: tagSlug(tag.name) })),
             excerpt,
             thumbnail,
@@ -108,6 +115,8 @@ const posts = defineCollection({
     commentCount: z.number(),
     // pinned to the top of the repository's issue or discussion list on GitHub
     pinned: z.boolean(),
+    // the discussion's category for giscus; null in issues mode
+    category: z.object({ id: z.string(), name: z.string() }).nullable(),
     tags: z.array(
       z.object({
         name: z.string(),
@@ -131,16 +140,15 @@ const site = defineCollection({
     const [profile, description, discussion] = await Promise.all([
       fetchProfile(repoOwner),
       fetchRepositoryDescription(repoOwner, repoName),
-      source === "discussions" ? discussionCategory() : null,
+      source === "discussions" ? discussionCategories() : null,
     ]);
     return [
       {
         id: "site",
         profile,
         description,
-        // giscus needs the repository and category ids, and only discussions mode uses giscus
+        // giscus needs the repository id, and only discussions mode uses giscus
         repoId: discussion?.repoId ?? null,
-        discussionCategory: discussion?.category ?? null,
       },
     ];
   },
@@ -156,9 +164,6 @@ const site = defineCollection({
     }),
     description: z.string().nullable(),
     repoId: z.string().nullable(),
-    discussionCategory: z
-      .object({ id: z.string(), name: z.string(), slug: z.string() })
-      .nullable(),
   }),
 });
 

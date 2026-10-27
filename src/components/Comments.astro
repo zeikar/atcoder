@@ -5,9 +5,11 @@ import { getSite } from "../lib/site";
 
 interface Props {
   number: number;
+  // the discussion's category in discussions mode
+  category: { id: string; name: string } | null;
 }
 
-const { number } = Astro.props;
+const { number, category } = Astro.props;
 const { repoOwner, repoName, source, language } = siteConfig;
 const repo = `${repoOwner}/${repoName}`;
 
@@ -33,11 +35,11 @@ if (source === "issues") {
     attributes: { repo, "issue-number": String(number) },
   };
 } else {
-  const { repoId, discussionCategory } = await getSite();
-  // the loader fills both only in discussions mode; null here means the loader is broken
-  if (repoId === null || discussionCategory === null) {
+  const { repoId } = await getSite();
+  // the loaders fill both only in discussions mode; null here means a loader is broken
+  if (repoId === null || category === null) {
     throw new Error(
-      "discussions mode requires repoId and discussionCategory on the site entry",
+      `discussions mode requires repoId on the site entry and a category on post ${number}`,
     );
   }
   widget = {
@@ -49,8 +51,8 @@ if (source === "issues") {
     attributes: {
       "data-repo": repo,
       "data-repo-id": repoId,
-      "data-category": discussionCategory.name,
-      "data-category-id": discussionCategory.id,
+      "data-category": category.name,
+      "data-category-id": category.id,
       "data-mapping": "number",
       "data-term": String(number),
       "data-strict": "1",

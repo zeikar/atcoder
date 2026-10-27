@@ -104,7 +104,7 @@ export type PostNode = {
   comments: { totalCount: number };
   state?: string;
   closed?: boolean;
-  category?: { slug: string };
+  category?: DiscussionCategory;
 };
 
 type PostPage = {
@@ -162,25 +162,27 @@ export const fetchIssues = (owner: string, repo: string): Promise<PostNode[]> =>
     }`,
   );
 
-type DiscussionCategory = { id: string; name: string; slug: string };
+export type DiscussionCategory = { id: string; name: string; slug: string };
 
-export const fetchDiscussionCategory = async (
+// checks the configured category slugs, so a typo fails the build instead of publishing nothing, and returns their ids
+// along with the repository id giscus needs
+export const fetchDiscussionCategories = async (
   owner: string,
   repo: string,
-  slug: string,
-): Promise<{ repoId: string; category: DiscussionCategory }> => {
+  slugs: string[],
+): Promise<{ repoId: string; categoryIds: string[] }> => {
   const { repository } = await githubGraphql<{
     repository: {
       id: string;
       hasDiscussionsEnabled: boolean;
-      discussionCategories: { nodes: DiscussionCategory[] };
+      discussionCategories: { nodes: { id: string; slug: string }[] };
     };
   }>(
     `query ($owner: String!, $repo: String!) {
       repository(owner: $owner, name: $repo) {
         id
         hasDiscussionsEnabled
-        discussionCategories(first: 100) { nodes { id name slug } }
+        discussionCategories(first: 100) { nodes { id slug } }
       }
     }`,
     { owner, repo },
@@ -193,16 +195,24 @@ export const fetchDiscussionCategory = async (
     );
   }
   const categories = repository.discussionCategories.nodes;
-  const category = categories.find((candidate) => candidate.slug === slug);
-  if (category === undefined) {
-    const available = categories.map((candidate) => candidate.slug).join(", ");
+  const available = categories.map((category) => category.slug);
+  const missing = slugs.filter((slug) => !available.includes(slug));
+  if (missing.length > 0) {
     throw new Error(
-      `config.json: "discussionCategory" "${slug}" is not a discussion category slug in ${owner}/${repo}; available slugs: ${available || "none"}`,
+      `config.json: "discussionCategory" names slugs that aren't discussion categories in ${owner}/${repo}: ${missing.map((slug) => `"${slug}"`).join(", ")}; available slugs: ${available.join(", ") || "none"}`,
     );
   }
-  return { repoId: repository.id, category };
+  return {
+    repoId: repository.id,
+    // each category once, however often its slug is listed
+    categoryIds: categories
+      .filter((category) => slugs.includes(category.slug))
+      .map((category) => category.id),
+  };
 };
 
+// a category's discussions, oldest first: the default order is by last update, and a discussion updated between two
+// page requests would jump over the cursor and be skipped
 export const fetchDiscussions = (
   owner: string,
   repo: string,
@@ -214,9 +224,9 @@ export const fetchDiscussions = (
     `query ($owner: String!, $repo: String!, $categoryId: ID!, $cursor: String) {
       repository(owner: $owner, name: $repo) {
         nameWithOwner
-        posts: discussions(categoryId: $categoryId, states: OPEN, first: 100, after: $cursor) {
+        posts: discussions(categoryId: $categoryId, states: OPEN, orderBy: { field: CREATED_AT, direction: ASC }, first: 100, after: $cursor) {
           pageInfo { hasNextPage endCursor }
-          nodes { ${POST_FIELDS} closed category { slug } }
+          nodes { ${POST_FIELDS} closed category { id name slug } }
         }
       }
     }`,
