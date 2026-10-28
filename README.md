@@ -59,10 +59,9 @@ git checkout -f -b repozine repozine/main
 Posts are the open issues or discussions written by the repository's owner, and their labels become tags. Set `source` in `config.json` to one of the two.
 
 - **Issues:** every open issue you write is a post. For comments, install the [utterances GitHub App](https://github.com/apps/utterances) on the repository.
-- **Discussions:** only the categories you name are published.
-  1. In Settings → **General → Features**, turn on **Discussions**.
-  2. In the Discussions tab, create a category for posts, such as **Posts**. Choose the Announcement format, so only maintainers can start discussions in it. Its slug is the end of the category's URL, `posts` in `.../discussions/categories/posts`; that is the `discussionCategory`. You can publish from several categories.
-  3. For comments, install the [giscus GitHub App](https://github.com/apps/giscus) on the repository.
+- **Discussions:** every open discussion you write is a post, in any category. In Settings → **General → Features**, turn on **Discussions**, and for comments, install the [giscus GitHub App](https://github.com/apps/giscus) on the repository.
+  - If you posted GitHub's "Welcome to … Discussions!" while setting Discussions up, close or delete it, or it becomes a post too.
+  - To publish only some categories, keeping posts apart from your Q&A questions or polls, list their slugs in `discussionCategory`. A slug is the end of the category's URL, `posts` in `.../discussions/categories/posts`. A category in the Announcement format lets only maintainers start discussions in it, and naming categories limits what each build downloads to the discussions in them.
 
 Comments are bound to the post's number, so each post keeps the comments made on its issue or discussion.
 
@@ -76,7 +75,6 @@ Edit `config.json`:
   "repoOwner": "your-username",
   "repoName": "your-repo",
   "source": "discussions",
-  "discussionCategory": "posts",
   "googleAnalyticsId": "",
   "language": "en"
 }
@@ -88,7 +86,7 @@ Edit `config.json`:
 | `repoOwner`          | Owner of the repository. Only issues or discussions authored by this account are published, so the repository must be owned by a user, not an organization                                                                                                                                                 |
 | `repoName`           | Repository whose issues or discussions become posts. A build in GitHub Actions stops if `repoOwner`/`repoName` name a different repository from the one it runs in                                                                                                                                         |
 | `source`             | `"issues"` or `"discussions"`                                                                                                                                                                                                                                                                              |
-| `discussionCategory` | Discussion category **slug** to publish from, or a list of them such as `["posts", "notes"]`. Required when `source` is `"discussions"`. Use Announcement-format categories so only maintainers can create posts                                                                                           |
+| `discussionCategory` | Discussion category **slug** to publish from, or a list of them such as `["posts", "notes"]`. Leave it out to publish every category                                                                                                                                                                       |
 | `googleAnalyticsId`  | Google Analytics measurement ID (e.g. `G-XXXXXXXXXX`). Leave empty to disable analytics                                                                                                                                                                                                                    |
 | `language`           | Language of the posts as a tag such as `"en"` or `"ko"`, used for `<html lang>`, dates and the giscus interface (English when giscus has no translation). Include a region (`"ko-KR"`) to also set `og:locale`. Korean (`"ko"`, `"ko-KR"`) also loads the Hangul faces of the web font. Defaults to `"en"` |
 
@@ -160,7 +158,7 @@ If a build then stops on a `config.json` key, add it; see [Configure and deploy]
 
 ## Switch from issues to discussions
 
-GitHub has no API or bulk action for this, so convert each post with **Convert to discussion** on its issue page, into the category you publish. The discussion keeps the title, body, author, labels and date but gets a new number, so the post's URL changes; the issue is left closed and locked. Then set `source` to `"discussions"` and `discussionCategory` in `config.json`.
+GitHub has no API or bulk action for this, so convert each post with **Convert to discussion** on its issue page, into a category you publish. The discussion keeps the title, body, author, labels and date but gets a new number, so the post's URL changes; the issue is left closed and locked. Then set `source` to `"discussions"` in `config.json`, and `discussionCategory` if you publish only some categories.
 
 ## Pinned posts
 

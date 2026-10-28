@@ -211,17 +211,17 @@ export const fetchDiscussionCategories = async (
   };
 };
 
-// a category's discussions, oldest first: the default order is by last update, and a discussion updated between two
-// page requests would jump over the cursor and be skipped
+// a category's discussions, or every category's for a null categoryId, oldest first: the default order is by last
+// update, and a discussion updated between two page requests would jump over the cursor and be skipped
 export const fetchDiscussions = (
   owner: string,
   repo: string,
-  categoryId: string,
+  categoryId: string | null,
 ): Promise<PostNode[]> =>
   fetchAllPosts(
     owner,
     repo,
-    `query ($owner: String!, $repo: String!, $categoryId: ID!, $cursor: String) {
+    `query ($owner: String!, $repo: String!, $categoryId: ID, $cursor: String) {
       repository(owner: $owner, name: $repo) {
         nameWithOwner
         posts: discussions(categoryId: $categoryId, states: OPEN, orderBy: { field: CREATED_AT, direction: ASC }, first: 100, after: $cursor) {

@@ -34,10 +34,13 @@ const fetchPostNodes = async () => {
   if (source === "issues") {
     return fetchIssues(repoOwner, repoName);
   }
-  // the categoryId argument takes one category, so each is listed on its own
+  // the categoryId argument takes one category, so each is listed on its own; with none configured, one listing
+  // covers them all
   const { categoryIds } = await discussionCategories();
+  const ids =
+    siteConfig.discussionCategories.length === 0 ? [null] : categoryIds;
   const lists = await Promise.all(
-    categoryIds.map((id) => fetchDiscussions(repoOwner, repoName, id)),
+    ids.map((id) => fetchDiscussions(repoOwner, repoName, id)),
   );
   return lists.flat();
 };

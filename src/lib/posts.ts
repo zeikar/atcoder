@@ -48,7 +48,8 @@ export const isTrustedPost = (
     node.__typename === "Discussion" &&
     node.closed === false &&
     node.category !== undefined &&
-    config.discussionCategories.includes(node.category.slug)
+    (config.discussionCategories.length === 0 ||
+      config.discussionCategories.includes(node.category.slug))
   );
 };
 

@@ -341,6 +341,14 @@ describe("fetchDiscussions", () => {
     });
   });
 
+  it("lists every category's discussions for a null category", async () => {
+    fetchMock.mockResolvedValue(issuesPage([node(1)], null));
+
+    await fetchDiscussions("zeikar", "repozine", null);
+
+    expect(variablesOf(0)).toMatchObject({ categoryId: null });
+  });
+
   // the default order is by last update, which moves a discussion updated between two page requests
   it("pages in creation order", async () => {
     fetchMock.mockResolvedValue(issuesPage([node(1)], null));
