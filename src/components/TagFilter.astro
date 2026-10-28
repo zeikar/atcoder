@@ -1,7 +1,7 @@
 ---
 import { getCollection } from "astro:content";
 import { tagPath, withBase } from "../lib/links";
-import { collectTags } from "../lib/tags";
+import { collectTags, foldTags } from "../lib/tags";
 
 interface Props {
   // the tag whose page this is; the "All" chip is current when omitted
@@ -11,6 +11,7 @@ interface Props {
 const { currentSlug } = Astro.props;
 const posts = (await getCollection("posts")).map((entry) => entry.data);
 // every page lists all tags, not only those on the posts it shows
+const { shown, folded } = foldTags(collectTags(posts), currentSlug);
 const chips = [
   {
     name: "All",
@@ -18,55 +19,72 @@ const chips = [
     count: posts.length,
     href: "/",
     current: currentSlug === undefined,
+    folded: false,
   },
-  ...collectTags(posts).map((tag) => ({
+  ...[...shown, ...folded].map((tag) => ({
     name: tag.name,
     color: tag.color,
     count: tag.count,
     href: tagPath(tag.slug),
     current: tag.slug === currentSlug,
+    folded: folded.includes(tag),
   })),
 ];
+// the toggle sits after the shown chips, so the folded ones it reveals come next in tab order
+const toggleAt = 1 + shown.length;
 ---
 
 {chips.length > 1 && (
   <nav aria-label="Tags">
-    <ul class="flex flex-wrap gap-1.5">
-      {chips.map((chip) => (
-        <li>
-          <a
-            href={withBase(import.meta.env.BASE_URL, chip.href)}
-            aria-current={chip.current ? "page" : undefined}
-            class:list={[
-              "inline-flex items-center gap-2 rounded-full border px-3 py-1 text-sm break-keep",
-              // the marker fill is faint against a white page, so semibold marks the current chip too;
-              // text selected on it takes the text color, since the marker-colored selection would vanish into the fill
-              chip.current
-                ? "border-transparent bg-marker-fill font-semibold text-on-marker-fill selection:bg-fg selection:text-page"
-                : "border-rule hover:border-muted",
-            ]}
-          >
-            {chip.color && (
-              <span
-                class:list={[
-                  "size-2.5 rounded-full ring-1 ring-inset",
-                  // the current chip is filled with the marker, so its ring follows the text on it, keeping a yellow label's dot visible
-                  chip.current ? "ring-on-marker-fill/50" : "ring-fg/15",
-                ]}
-                style={`background-color: #${chip.color}`}
-              />
-            )}
-            {chip.name}
-            <span
+    <ul class="group flex flex-wrap gap-1.5">
+      {chips.map((chip, index) => (
+        <>
+          {index === toggleAt && (
+            <li class="group-has-open:hidden">
+              {/* opening it reveals the folded chips through the list's :has(), with no script, and hides the toggle,
+                  whose place the first of them takes. There is no folding back: a tag link loads its page folded */}
+              <details>
+                <summary class="inline-flex cursor-pointer list-none items-center rounded-full border border-dashed border-rule px-3 py-1 text-sm text-muted hover:border-muted hover:text-fg [&::-webkit-details-marker]:hidden">
+                  +{folded.length} more
+                </summary>
+              </details>
+            </li>
+          )}
+          <li class:list={[chip.folded && "hidden group-has-open:block"]}>
+            <a
+              href={withBase(import.meta.env.BASE_URL, chip.href)}
+              aria-current={chip.current ? "page" : undefined}
               class:list={[
-                "tabular-nums",
-                chip.current ? "opacity-70" : "text-muted",
+                "inline-flex items-center gap-2 rounded-full border px-3 py-1 text-sm break-keep",
+                // the marker fill is faint against a white page, so semibold marks the current chip too;
+                // text selected on it takes the text color, since the marker-colored selection would vanish into the fill
+                chip.current
+                  ? "border-transparent bg-marker-fill font-semibold text-on-marker-fill selection:bg-fg selection:text-page"
+                  : "border-rule hover:border-muted",
               ]}
             >
-              {chip.count}
-            </span>
-          </a>
-        </li>
+              {chip.color && (
+                <span
+                  class:list={[
+                    "size-2.5 rounded-full ring-1 ring-inset",
+                    // the current chip is filled with the marker, so its ring follows the text on it, keeping a yellow label's dot visible
+                    chip.current ? "ring-on-marker-fill/50" : "ring-fg/15",
+                  ]}
+                  style={`background-color: #${chip.color}`}
+                />
+              )}
+              {chip.name}
+              <span
+                class:list={[
+                  "tabular-nums",
+                  chip.current ? "opacity-70" : "text-muted",
+                ]}
+              >
+                {chip.count}
+              </span>
+            </a>
+          </li>
+        </>
       ))}
     </ul>
   </nav>

@@ -41,3 +41,23 @@ export const collectTags = (posts: Pick<Post, "tags">[]): TagSummary[] => {
     (a, b) => b.count - a.count || a.name.localeCompare(b.name),
   );
 };
+
+// how many of the most used tags a long tag list shows before folding the rest behind a toggle: with dozens of labels,
+// the whole list would fill a phone's first screen before any post
+export const SHOWN_TAGS = 12;
+
+export const foldTags = <T extends { slug: string }>(
+  tags: T[],
+  currentSlug: string | undefined,
+  limit = SHOWN_TAGS,
+): { shown: T[]; folded: T[] } => {
+  const shown = tags.slice(0, limit);
+  const folded = tags.slice(limit);
+  // the page's own tag stays in view
+  const current = folded.findIndex((tag) => tag.slug === currentSlug);
+  if (current !== -1) {
+    shown.push(...folded.splice(current, 1));
+  }
+  // folding one tag would only swap its chip for the toggle's
+  return folded.length < 2 ? { shown: tags, folded: [] } : { shown, folded };
+};
