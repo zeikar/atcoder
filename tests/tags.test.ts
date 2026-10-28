@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { collectTags, tagSlug } from "../src/lib/tags";
+import { collectTags, foldTags, tagSlug } from "../src/lib/tags";
 
 describe("tagSlug", () => {
   it.each([
@@ -75,5 +75,31 @@ describe("collectTags", () => {
     expect(() => collectTags(posts)).toThrow(
       /"help wanted" and "help-wanted" share the tag slug "help-wanted"/,
     );
+  });
+});
+
+describe("foldTags", () => {
+  const tags = ["a", "b", "c", "d", "e"].map((slug) => ({ slug }));
+  const slugs = (list: { slug: string }[]) => list.map(({ slug }) => slug);
+
+  it("shows the first tags and folds the rest", () => {
+    const { shown, folded } = foldTags(tags, undefined, 2);
+    expect(slugs(shown)).toEqual(["a", "b"]);
+    expect(slugs(folded)).toEqual(["c", "d", "e"]);
+  });
+
+  it("keeps the current tag in view", () => {
+    const { shown, folded } = foldTags(tags, "d", 2);
+    expect(slugs(shown)).toEqual(["a", "b", "d"]);
+    expect(slugs(folded)).toEqual(["c", "e"]);
+  });
+
+  it("doesn't fold a single tag", () => {
+    expect(foldTags(tags, undefined, 4).folded).toEqual([]);
+    expect(foldTags(tags, undefined, 3).folded).toHaveLength(2);
+  });
+
+  it("doesn't fold a single tag left after keeping the current one in view", () => {
+    expect(foldTags(tags, "e", 3)).toEqual({ shown: tags, folded: [] });
   });
 });
