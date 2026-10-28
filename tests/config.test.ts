@@ -39,11 +39,6 @@ describe("parseSiteConfig", () => {
       /"language"/,
     ],
     [
-      "discussions without a category",
-      { ...issuesConfig, source: "discussions" },
-      /"discussionCategory"/,
-    ],
-    [
       "discussions with an empty list of categories",
       { ...issuesConfig, source: "discussions", discussionCategory: [] },
       /"discussionCategory"/,
@@ -70,6 +65,13 @@ describe("parseSiteConfig", () => {
     });
   });
 
+  it("publishes every category when discussions name none", () => {
+    expect(
+      parseSiteConfig({ ...issuesConfig, source: "discussions" })
+        .discussionCategories,
+    ).toEqual([]);
+  });
+
   it("accepts a list of categories", () => {
     expect(
       parseSiteConfig({
@@ -84,6 +86,10 @@ describe("parseSiteConfig", () => {
   it("ignores the category in issues mode", () => {
     expect(
       parseSiteConfig({ ...issuesConfig, discussionCategory: "" })
+        .discussionCategories,
+    ).toEqual([]);
+    expect(
+      parseSiteConfig({ ...issuesConfig, discussionCategory: [] })
         .discussionCategories,
     ).toEqual([]);
   });

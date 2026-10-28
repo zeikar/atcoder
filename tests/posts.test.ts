@@ -89,6 +89,15 @@ describe("isTrustedPost in discussions mode", () => {
     expect(isTrustedPost(discussion(), discussionsConfig)).toBe(true);
   });
 
+  it("trusts a discussion in any category when none is configured", () => {
+    const node = discussion({
+      category: { id: "DIC_3", name: "Ideas", slug: "ideas" },
+    });
+    expect(
+      isTrustedPost(node, { ...discussionsConfig, discussionCategories: [] }),
+    ).toBe(true);
+  });
+
   it("trusts a discussion in any of the categories", () => {
     const node = discussion({
       category: { id: "DIC_2", name: "Notes", slug: "notes" },
