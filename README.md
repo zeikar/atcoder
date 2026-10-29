@@ -170,7 +170,7 @@ Pin one of your posts on GitHub (an issue or a discussion, whichever `source` pu
 - A post's link preview shows its first image. Posts without one get a card rendered by [DOGimg](https://dogimg.vercel.app).
 - `sitemap.xml` and `rss.xml` are built next to the home page, e.g. `https://<owner>.github.io/<repo>/sitemap.xml`. The feed carries only the newest 20 posts, in full, with their code unhighlighted.
 - Crawlers read `robots.txt` only at the root of a host, so a site gets one only when it is served from there: a `<owner>.github.io` repository, or a project repository with its own domain. For a project site under a path, add `Sitemap: https://<host>/<repo>/sitemap.xml` to the root site's `robots.txt`, or submit the sitemap in Google Search Console.
-- The deploy workflow passes the site's real address to the build, so absolute URLs and links follow a custom domain, including one set on the repository itself. Local builds assume `https://<owner>.github.io/<repo>/` unless `SITE_URL` is set, e.g. `SITE_URL=https://blog.example.com`.
+- The deploy workflow passes the site's real address to the build, so absolute URLs and links follow a custom domain, including one set on the repository itself. Any other build, local or on another host such as Cloudflare Pages, assumes `https://<owner>.github.io/<repo>/` for its links and asset paths too, unless `SITE_URL` is set to the site's address, e.g. `SITE_URL=https://blog.example.com`.
 
 ## Local development
 
